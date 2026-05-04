@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: verificador-decreto-10278
+    env: docker
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: VERAPDF_BIN
+        value: /opt/verapdf/verapdf
+      - key: MAX_FILE_SIZE
+        value: "52428800"
+      - key: VERAPDF_TIMEOUT
+        value: "120000"
