@@ -1682,7 +1682,11 @@
               ? ` Assinatura(s) detectada(s): ${signatureValidation.signatures.length}.`
               : '';
 
-            if (signatureValidation.valid === true && signatureValidation.icpBrasil === true) {
+            const assinaturaIcpBrasilValida =
+  signatureValidation.result === 'valid_icp_brasil' ||
+  (signatureValidation.valid === true && signatureValidation.icpBrasil === true);
+
+if (assinaturaIcpBrasilValida) {
               details.push({
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'ok',
