@@ -324,6 +324,48 @@
     .btn-primary:hover { background: var(--blue-dark); }
     .btn-primary:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
 
+    .btn-primary.btn-loading:disabled {
+      opacity: 1;
+      cursor: wait;
+    }
+
+    .btn-loading {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .button-spinner {
+      width: 15px;
+      height: 15px;
+      border: 2px solid rgba(255,255,255,.45);
+      border-top-color: #fff;
+      border-radius: 999px;
+      animation: spin .75s linear infinite;
+      flex: 0 0 15px;
+    }
+
+    .loading-dots::after {
+      content: "";
+      display: inline-block;
+      width: 1.2em;
+      text-align: left;
+      animation: dots 1s steps(4, end) infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes dots {
+      0% { content: ""; }
+      25% { content: "."; }
+      50% { content: ".."; }
+      75%, 100% { content: "..."; }
+    }
+
+
     .btn-secondary {
       background: #eef2f7;
       color: #243044;
@@ -346,7 +388,7 @@
     }
 
     .metric-label {
-      font-size: 12px;
+      font-size: 13px;
       color: var(--muted);
       font-weight: 800;
       text-transform: uppercase;
@@ -415,7 +457,7 @@
     th {
       background: #f7f9fc;
       color: #344054;
-      font-size: 12px;
+      font-size: 13px;
       text-transform: uppercase;
       letter-spacing: .05em;
     }
@@ -427,7 +469,7 @@
       align-items: center;
       border-radius: 999px;
       padding: 5px 9px;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 900;
       white-space: nowrap;
     }
@@ -452,7 +494,7 @@
     }
 
     .block-card-title {
-      font-size: 12px;
+      font-size: 13px;
       color: var(--muted);
       font-weight: 900;
       text-transform: uppercase;
@@ -565,8 +607,12 @@
     .footer {
       margin-top: 22px;
       color: var(--muted);
-      font-size: 12px;
+      font-size: 13px;
       text-align: center;
+    }
+
+    .footer a {
+      font-weight: 800;
     }
 
     .hidden { display: none !important; }
@@ -587,7 +633,7 @@
       <div class="card hero-main">
         <div class="eyebrow">Versão beta</div>
         <h1>Triagem e validação de documentos eletrônicos.</h1>
-        <p class="lead">Envie um PDF ou PNG para verificar formato, hash, validação PDF/A por backend veraPDF, assinatura digital ICP-Brasil por microserviço técnico, metadados e parâmetros compatíveis com o Decreto nº 10.278/2020.</p>
+        <p class="lead">Envie um PDF para verificar formato, hash, conformidade PDF/A, metadados, parâmetros do Decreto nº 10.278/2020 e assinatura digital ICP-Brasil.</p>
         <div class="notice">O resultado é uma conferência automatizada do arquivo. Não substitui a qualificação notarial e registral nem os demais procedimentos de análise do documento eletrônico.</div>
       </div>
 
@@ -632,12 +678,12 @@
           </div>
         </div>
 
-        <input id="fileInput" type="file" accept="application/pdf,image/png,.pdf,.png" class="hidden" />
-        <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Selecionar arquivo PDF ou PNG">
+        <input id="fileInput" type="file" accept="application/pdf,.pdf" class="hidden" />
+        <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Selecionar arquivo PDF PAdES">
           <div class="drop-icon">↑</div>
           <div>
             <div class="drop-title">Arraste o arquivo ou clique para selecionar</div>
-            <p class="drop-text">Formatos aceitos: PDF e PNG. Limite sugerido: 50 MB.</p>
+            <p class="drop-text">Formato aceito: PDF PAdES. Limite 20 MB.</p>
           </div>
         </div>
         <div id="fileName" class="file-name"></div>
@@ -702,13 +748,14 @@
           <div class="actions">
             <button id="copyBtn" class="btn-secondary" type="button">Copiar relatório</button>
             <button id="downloadBtn" class="btn-secondary" type="button">Baixar relatório TXT</button>
+            <button id="newAnalysisBtn" class="btn-primary" type="button">Nova análise</button>
           </div>
         </div>
       </section>
     </main>
 
     <footer class="footer">
-      Projeto apoiado por Escritura Pública (https://escriturapublica.substack.com) e Atesta (https://www.atesta.com.br). Versão beta 2026. MP 2.200-2/01, Lei 14.063/2020 e Decreto nº 10.278/2020, anexos I e II.
+      Projeto apoiado por <a href="https://escriturapublica.substack.com" target="_blank" rel="noopener noreferrer">Escritura Pública</a> e <a href="https://www.atesta.com.br" target="_blank" rel="noopener noreferrer">Atesta</a>. Versão beta - 2026. Fundamento legal: MP nº 2.200-2/01, Lei nº 14.063/2020, Decreto nº 10.278/2020, anexos I e II e Prov. CNJ nº 149/2023.
     </footer>
   </div>
 
@@ -798,13 +845,15 @@
       resultsBody: document.getElementById('resultsBody'),
       blockSummary: document.getElementById('blockSummary'),
       copyBtn: document.getElementById('copyBtn'),
-      downloadBtn: document.getElementById('downloadBtn')
+      downloadBtn: document.getElementById('downloadBtn'),
+      newAnalysisBtn: document.getElementById('newAnalysisBtn')
     };
 
     let selectedFile = null;
     let lastReportText = '';
     const BACKEND_PDFA_ENDPOINT = window.VERAPDF_ENDPOINT || '/api/validate-pdfa';
     const BACKEND_SIGNATURE_ENDPOINT = window.SIGNATURE_ENDPOINT || '/api/validate-signature';
+    const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 
     els.dropzone.addEventListener('click', () => els.fileInput.click());
     els.dropzone.addEventListener('keydown', event => {
@@ -833,9 +882,24 @@
     els.clearBtn.addEventListener('click', clearAll);
     els.copyBtn.addEventListener('click', copyReport);
     els.downloadBtn.addEventListener('click', downloadReport);
+    if (els.newAnalysisBtn) {
+      els.newAnalysisBtn.addEventListener('click', () => {
+        clearAll();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
 
     function setSelectedFile(file) {
       if (!file) return;
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        selectedFile = null;
+        els.fileInput.value = '';
+        els.fileName.textContent = '';
+        els.fileName.style.display = 'none';
+        els.analyzeBtn.disabled = true;
+        showError('O arquivo ultrapassa o limite de 20 MB. Envie um PDF PAdES com até 20 MB.');
+        return;
+      }
       selectedFile = file;
       els.fileName.textContent = `${file.name} · ${formatBytes(file.size)}`;
       els.fileName.style.display = 'block';
@@ -849,6 +913,9 @@
       els.fileName.textContent = '';
       els.fileName.style.display = 'none';
       els.analyzeBtn.disabled = true;
+      els.analyzeBtn.classList.remove('btn-loading');
+      els.analyzeBtn.removeAttribute('aria-busy');
+      els.analyzeBtn.textContent = 'Analisar arquivo';
       els.emptyState.classList.remove('hidden');
       els.report.classList.add('hidden');
       els.resultsBody.innerHTML = '';
@@ -857,7 +924,9 @@
     async function analyzeSelectedFile() {
       if (!selectedFile) return;
       els.analyzeBtn.disabled = true;
-      els.analyzeBtn.textContent = 'Analisando...';
+      els.analyzeBtn.classList.add('btn-loading');
+      els.analyzeBtn.innerHTML = '<span class="button-spinner" aria-hidden="true"></span><span>Analisando</span><span class="loading-dots" aria-hidden="true"></span>';
+      els.analyzeBtn.setAttribute('aria-busy', 'true');
 
       try {
         const buffer = await selectedFile.arrayBuffer();
@@ -915,6 +984,8 @@
         showError('Não foi possível analisar o arquivo. Verifique se o arquivo não está corrompido e tente novamente.');
       } finally {
         els.analyzeBtn.disabled = false;
+        els.analyzeBtn.classList.remove('btn-loading');
+        els.analyzeBtn.removeAttribute('aria-busy');
         els.analyzeBtn.textContent = 'Analisar arquivo';
       }
     }
