@@ -461,6 +461,60 @@
       color: #475467;
     }
 
+
+
+    .details-toggle {
+      margin-top: 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .details-toggle-summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 16px;
+      font-weight: 900;
+      font-size: 14px;
+      color: #243044;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      user-select: none;
+      background: #f7f9fc;
+      border-bottom: 1px solid transparent;
+    }
+
+    .details-toggle-summary::-webkit-details-marker { display: none; }
+
+    .details-toggle-summary::after {
+      content: "▾";
+      color: #526173;
+      font-size: 16px;
+      transition: transform .18s ease;
+    }
+
+    .details-toggle[open] .details-toggle-summary { border-bottom-color: var(--line); }
+    .details-toggle[open] .details-toggle-summary::after { transform: rotate(180deg); }
+
+    .details-toggle-content { padding: 0; }
+
+    .signature-extra {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #e5eaf2;
+      display: grid;
+      gap: 6px;
+      font-size: 13px;
+      color: #334155;
+      line-height: 1.45;
+    }
+
+    .signature-extra div { overflow-wrap: anywhere; }
+    .signature-extra strong { color: #172033; }
+
     .hash {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       overflow-wrap: anywhere;
@@ -617,16 +671,21 @@
 
           <div id="blockSummary" class="block-summary" aria-label="Síntese por blocos"></div>
 
-          <table aria-label="Relatório técnico preliminar">
-            <thead>
-              <tr>
-                <th>Requisito</th>
-                <th>Resultado</th>
-                <th>Orientação</th>
-              </tr>
-            </thead>
-            <tbody id="resultsBody"></tbody>
-          </table>
+          <details class="details-toggle" id="detailsToggle">
+            <summary class="details-toggle-summary">Ver requisitos, resultado e orientação</summary>
+            <div class="details-toggle-content">
+              <table aria-label="Relatório técnico preliminar">
+                <thead>
+                  <tr>
+                    <th>Requisito</th>
+                    <th>Resultado</th>
+                    <th>Orientação</th>
+                  </tr>
+                </thead>
+                <tbody id="resultsBody"></tbody>
+              </table>
+            </div>
+          </details>
 
           <div class="actions">
             <button id="copyBtn" class="btn-secondary" type="button">Copiar relatório</button>
@@ -1823,6 +1882,88 @@
       details.push({ req: `Cor esperada: ${rule.color}`, status: 'fail', result: 'Arquivo não reconhecido', guidance: 'Envie PDF/A ou PNG conforme o tipo documental.' });
     }
 
+
+
+    function extractNameAndCpfFromSubject(subject) {
+      if (!subject || typeof subject !== 'string') {
+        return { nome: 'Não localizado', cpf: null };
+      }
+
+      const cnMatch = subject.match(/CN=([^,]+?)(?:,|$)/i);
+      if (!cnMatch) {
+        return { nome: 'Não localizado', cpf: null };
+      }
+
+      const cnValue = cnMatch[1].trim();
+      const cpfMatch = cnValue.match(/:(\d{11})$/);
+
+      if (cpfMatch) {
+        return {
+          nome: cnValue.replace(/:\d{11}$/, '').trim(),
+          cpf: cpfMatch[1]
+        };
+      }
+
+      return { nome: cnValue, cpf: null };
+    }
+
+    function formatCpfMasked(cpf) {
+      if (!cpf || !/^\d{11}$/.test(cpf)) return 'Não localizado';
+      return `${cpf.slice(0, 3)}.***.***-${cpf.slice(9, 11)}`;
+    }
+
+    function formatDateBR(value) {
+      if (!value) return 'Não localizada';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return 'Não localizada';
+      return date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    }
+
+    function formatDateTimeBR(value) {
+      if (!value) return 'Não localizada';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return 'Não localizada';
+      return date.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    }
+
+    function buildSignaturePresentation(signatureValidation, basic) {
+      const firstSignature = Array.isArray(signatureValidation?.signatures) && signatureValidation.signatures.length
+        ? signatureValidation.signatures[0]
+        : null;
+
+      const extracted = extractNameAndCpfFromSubject(firstSignature?.certificateSubject || '');
+
+      const certificateValidity = firstSignature?.certificateNotBefore && firstSignature?.certificateNotAfter
+        ? `${formatDateBR(firstSignature.certificateNotBefore)} a ${formatDateBR(firstSignature.certificateNotAfter)}`
+        : 'Não localizada';
+
+      return {
+        arquivo: basic?.name || selectedFile?.name || 'Não localizado',
+        assinanteNome: extracted.nome || 'Não localizado',
+        assinanteCpf: formatCpfMasked(extracted.cpf),
+        certificadoVigencia: certificateValidity,
+        dataAssinatura: formatDateTimeBR(firstSignature?.signDate)
+      };
+    }
+
+    function signaturePresentationText(data) {
+      if (!data) return '';
+      return ` Arquivo: ${data.arquivo}. Assinante: ${data.assinanteNome}. CPF: ${data.assinanteCpf}. Vigência do certificado: ${data.certificadoVigencia}. Documento assinado em: ${data.dataAssinatura}.`;
+    }
+
+    function signaturePresentationHtml(data) {
+      if (!data) return '';
+      return `
+        <div class="signature-extra">
+          <div><strong>Arquivo:</strong> ${escapeHtml(data.arquivo)}</div>
+          <div><strong>Assinante:</strong> ${escapeHtml(data.assinanteNome)}</div>
+          <div><strong>CPF:</strong> ${escapeHtml(data.assinanteCpf)}</div>
+          <div><strong>Vigência do certificado:</strong> ${escapeHtml(data.certificadoVigencia)}</div>
+          <div><strong>Documento assinado em:</strong> ${escapeHtml(data.dataAssinatura)}</div>
+        </div>
+      `;
+    }
+
     function evaluateSignature(details, basic, pdfInfo, purpose, signatureValidation) {
       if (purpose === 'private') {
         details.push({
@@ -1851,6 +1992,8 @@
           const warnings = Array.isArray(signatureValidation.warnings) && signatureValidation.warnings.length
             ? ` Observações: ${signatureValidation.warnings.join(' ')}`
             : '';
+          const signaturePresentation = buildSignaturePresentation(signatureValidation, basic);
+          const signatureContext = signaturePresentationText(signaturePresentation);
 
           if (signatureValidation.hasSignature === true) {
             const resultado = signatureValidation.result || '';
@@ -1889,13 +2032,14 @@
                 ? ' O PDF contém atualização incremental posterior classificada como inclusão técnica de DSS/VRI, certificados e LCRs.'
                 : '';
 
-              const guidanceOk = `Assinatura PAdES-B validada. O certificado do assinante foi identificado como certificado ICP-Brasil. A cadeia de certificação foi validada até a AC-Raiz da ICP-Brasil.${revocationInfo}${dssInfo}${timestampInfo}${policyInfo}${signers}`;
+              const guidanceOk = `Assinatura PAdES-B validada. O certificado do assinante foi identificado como certificado ICP-Brasil. A cadeia de certificação foi validada até a AC-Raiz da ICP-Brasil.${revocationInfo}${dssInfo}${timestampInfo}${policyInfo}${signatureContext}${signers}`;
 
               details.push({
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'ok',
                 result: classification,
-                guidance: guidanceOk
+                guidance: guidanceOk,
+                signaturePresentation
               });
               return;
             }
@@ -1905,7 +2049,7 @@
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'fail',
                 result: 'Certificado revogado',
-                guidance: `${signatureValidation.message || 'O certificado do assinante consta como revogado na fonte consultada.'}${standard}${level}${signers}${chainPath}${revocationInfo}${warnings}`
+                guidance: `${signatureValidation.message || 'O certificado do assinante consta como revogado na fonte consultada.'}${standard}${level}${signatureContext}${signers}${chainPath}${revocationInfo}${warnings}`
               });
               return;
             }
@@ -1915,7 +2059,7 @@
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'fail',
                 result: 'Assinatura digital inválida ou com integridade não confirmada',
-                guidance: `${signatureValidation.message || 'A assinatura foi detectada, mas a validação técnica indicou erro, restrição ou falha de integridade.'}${standard}${level}${signers}${warnings}`
+                guidance: `${signatureValidation.message || 'A assinatura foi detectada, mas a validação técnica indicou erro, restrição ou falha de integridade.'}${standard}${level}${signatureContext}${signers}${warnings}`
               });
               return;
             }
@@ -1925,7 +2069,7 @@
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'warn',
                 result: 'Assinatura válida na revisão assinada, mas PDF final não aceito automaticamente',
-                guidance: `${signatureValidation.message || 'A assinatura foi validada sobre a revisão assinada, mas o PDF final contém atualização posterior não classificada como técnica permitida.'}${standard}${level}${signers}${chainPath}${revocationInfo}${signatureValidation.postSignatureUpdateMessage ? ` ${signatureValidation.postSignatureUpdateMessage}` : ''}${warnings}`
+                guidance: `${signatureValidation.message || 'A assinatura foi validada sobre a revisão assinada, mas o PDF final contém atualização posterior não classificada como técnica permitida.'}${standard}${level}${signatureContext}${signers}${chainPath}${revocationInfo}${signatureValidation.postSignatureUpdateMessage ? ` ${signatureValidation.postSignatureUpdateMessage}` : ''}${warnings}`
               });
               return;
             }
@@ -1935,7 +2079,7 @@
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'warn',
                 result: 'Assinatura validada, mas cadeia ICP-Brasil não concluída',
-                guidance: `${signatureValidation.message || 'A assinatura foi validada, mas a cadeia de certificação não foi concluída até âncora confiável da ICP-Brasil.'}${standard}${level}${signers}${warnings}`
+                guidance: `${signatureValidation.message || 'A assinatura foi validada, mas a cadeia de certificação não foi concluída até âncora confiável da ICP-Brasil.'}${standard}${level}${signatureContext}${signers}${warnings}`
               });
               return;
             }
@@ -1945,7 +2089,7 @@
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'warn',
                 result: 'Assinatura validada, mas revogação não consultada',
-                guidance: `${signatureValidation.message || 'A assinatura e o certificado foram validados, mas a consulta de revogação por LCR ou OCSP não foi concluída.'}${standard}${level}${signers}${chainPath}${warnings}`
+                guidance: `${signatureValidation.message || 'A assinatura e o certificado foram validados, mas a consulta de revogação por LCR ou OCSP não foi concluída.'}${standard}${level}${signatureContext}${signers}${chainPath}${warnings}`
               });
               return;
             }
@@ -1955,7 +2099,7 @@
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'warn',
                 result: 'Assinatura ICP-Brasil validada parcialmente',
-                guidance: `${signatureValidation.message || 'Assinatura digital validada, mas ainda há critérios técnicos não concluídos para aceitação automática.'}${standard}${level}${signers}${chainPath}${revocationInfo}${timestampInfo}${policyInfo}${warnings}`
+                guidance: `${signatureValidation.message || 'Assinatura digital validada, mas ainda há critérios técnicos não concluídos para aceitação automática.'}${standard}${level}${signatureContext}${signers}${chainPath}${revocationInfo}${timestampInfo}${policyInfo}${warnings}`
               });
               return;
             }
@@ -1964,7 +2108,7 @@
               req: 'Assinatura digital ICP-Brasil',
               status: 'warn',
               result: 'Assinatura digital detectada, mas validação conclusiva não obtida',
-              guidance: `${signatureValidation.message || 'O microserviço detectou assinatura embutida, mas não concluiu a validação técnica necessária.'}${standard}${level}${signers}${warnings}`
+              guidance: `${signatureValidation.message || 'O microserviço detectou assinatura embutida, mas não concluiu a validação técnica necessária.'}${standard}${level}${signatureContext}${signers}${warnings}`
             });
             return;
           }
@@ -2243,6 +2387,7 @@
             <span class="tag ${item.status}">${labelForStatus(item.status)}</span>
             <div class="block-card-result">${escapeHtml(item.result)}</div>
             <div class="block-card-text">${escapeHtml(item.text)}</div>
+            ${item.signaturePresentation ? signaturePresentationHtml(item.signaturePresentation) : ''}
           </article>
         `).join('');
       }
@@ -2287,7 +2432,8 @@
           result: cleanSummaryResult(signatureItem?.result || 'Não avaliada'),
           text: signatureItem?.status === 'ok'
             ? 'A assinatura foi tratada em bloco próprio, com cadeia ICP-Brasil, revogação e classificação técnica quando disponíveis.'
-            : 'A assinatura exige validação técnica específica ou nova conferência conforme o resultado detalhado.'
+            : 'A assinatura exige validação técnica específica ou nova conferência conforme o resultado detalhado.',
+          signaturePresentation: signatureItem?.signaturePresentation || null
         },
         {
           title: 'Digitalização e imagem',
