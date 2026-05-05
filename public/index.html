@@ -532,7 +532,7 @@
           <div class="drop-icon">↑</div>
           <div>
             <div class="drop-title">Arraste o arquivo ou clique para selecionar</div>
-            <p class="drop-text">Formatos aceitos neste protótipo: PDF e PNG. Limite sugerido: 50 MB.</p>
+            <p class="drop-text">Formatos aceitos nesta versão beta: PDF e PNG. Limite sugerido: 50 MB.</p>
           </div>
         </div>
         <div id="fileName" class="file-name"></div>
@@ -1880,7 +1880,7 @@
           req: 'Resumo dos metadados do Anexo II',
           status: 'fail',
           result: `Campos faltantes: ${missing.join('; ')}`,
-          guidance: 'O arquivo deve ser corrigido ou acompanhado de sistema de gestão que registre os metadados mínimos exigidos. O protótipo considera não conforme o campo obrigatório que não aparece nos metadados legíveis do arquivo.'
+          guidance: 'O arquivo deve ser corrigido ou acompanhado de sistema de gestão que registre os metadados mínimos exigidos. O sistema considera não conforme o campo obrigatório que não aparece nos metadados legíveis do arquivo.'
         });
       } else {
         details.push({
@@ -1896,7 +1896,7 @@
       }
 
       if (basic.kind === 'PNG' && pngInfo?.textChunks?.length) {
-        details.push({ req: 'Metadados técnicos PNG', status: 'neutral', result: `${pngInfo.textChunks.length} bloco(s) textual(is) detectado(s)`, guidance: 'O protótipo lê blocos textuais tEXt e iTXt não comprimidos. Metadados zTXt comprimidos exigem descompactação em versão posterior.' });
+        details.push({ req: 'Metadados técnicos PNG', status: 'neutral', result: `${pngInfo.textChunks.length} bloco(s) textual(is) detectado(s)`, guidance: 'Esta versão beta lê blocos textuais tEXt e iTXt não comprimidos. Metadados zTXt comprimidos exigem descompactação em versão posterior.' });
       }
     }
 
@@ -2026,8 +2026,8 @@
 
     function statusMessage(totals) {
       if (totals.status === 'fail') return `Foram encontrados ${totals.fail} ponto(s) de não conformidade técnica preliminar. Revise o arquivo antes do envio ao registro imobiliário e a outros órgãos que exigem os requisitos do Decreto nº 10.278/2020.`;
-      if (totals.status === 'warn') return `Não foram detectadas falhas impeditivas pelo protótipo, mas ${totals.warn} item(ns) dependem de validação técnica externa ou conferência manual.`;
-      return 'Os itens verificáveis pelo protótipo apresentaram resultado compatível. Ainda assim, mantenha a conferência jurídica e técnica externa quando necessária.';
+      if (totals.status === 'warn') return `Não foram detectadas falhas impeditivas nesta versão beta, mas ${totals.warn} item(ns) dependem de validação técnica externa ou conferência manual.`;
+      return 'Os itens verificáveis pela versão beta apresentaram resultado compatível. Ainda assim, mantenha a conferência jurídica e técnica externa quando necessária.';
     }
 
     function labelForStatus(status) {
