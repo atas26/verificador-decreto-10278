@@ -587,27 +587,11 @@
             <li><span class="dot"></span><span>A checagem da assinatura digital é automatizada.</span></li>
           </ul>
         </div>
-        <div class="legal-box">
-          <p><strong>PDF/A:</strong> a validação de conformidade é automatizada por backend técnico com veraPDF.</p><p><strong>Assinatura digital:</strong> a checagem da assinatura digital ICP-Brasil é automatizada por microserviço técnico. A resolução e o modo de cor de imagens internas do PDF dependem da estrutura do arquivo e podem exigir validação complementar.</p>
-        </div>
       </aside>
     </section>
 
     <main class="main-grid">
       <section class="card panel">
-        <div class="field">
-          <label for="docType">Tipo de documento original</label>
-          <select id="docType">
-            <option value="printed_bw">Texto impresso, sem ilustração, em preto e branco</option>
-            <option value="printed_bw_illustrated">Texto impresso, com ilustração, em preto e branco</option>
-            <option value="printed_color">Texto impresso, com ilustração e cores</option>
-            <option value="manuscript_bw">Texto manuscrito, com ou sem ilustração, em preto e branco</option>
-            <option value="manuscript_color">Texto manuscrito, com ou sem ilustração, em cores</option>
-            <option value="photo_poster">Fotografia ou cartaz</option>
-            <option value="plant_map">Planta ou mapa</option>
-          </select>
-        </div>
-
         <div class="field">
           <label for="purpose">Contexto de uso</label>
           <select id="purpose">
@@ -631,13 +615,22 @@
           <button id="clearBtn" class="btn-secondary" type="button">Limpar</button>
         </div>
 
-        <div class="legal-box">
-          <p><strong>Privacidade.</strong> As verificações simples ocorrem no navegador. Para a validação PDF/A, o arquivo é enviado temporariamente ao veraPDF e descartado em seguida.</p>
-          <p><strong>Produção.</strong> Para uso institucional, recomenda-se backend com antivírus, limite de tamanho, logs mínimos, exclusão automática e política de privacidade.</p>
-        </div>
       </section>
 
       <section class="card panel" id="reportPanel">
+        <div class="field">
+          <label for="docType">Tipo de documento original</label>
+          <select id="docType">
+            <option value="printed_bw">Texto impresso, sem ilustração, em preto e branco</option>
+            <option value="printed_bw_illustrated">Texto impresso, com ilustração, em preto e branco</option>
+            <option value="printed_color">Texto impresso, com ilustração e cores</option>
+            <option value="manuscript_bw">Texto manuscrito, com ou sem ilustração, em preto e branco</option>
+            <option value="manuscript_color">Texto manuscrito, com ou sem ilustração, em cores</option>
+            <option value="photo_poster">Fotografia ou cartaz</option>
+            <option value="plant_map">Planta ou mapa</option>
+          </select>
+        </div>
+
         <div class="empty" id="emptyState">
           <div>
             <strong>Nenhum arquivo analisado.</strong>
