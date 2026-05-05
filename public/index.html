@@ -195,13 +195,25 @@
 
     .main-grid {
       display: grid;
-      grid-template-columns: 410px minmax(0, 1fr);
+      grid-template-columns: 1fr;
       gap: 20px;
       align-items: start;
     }
 
     .panel {
       padding: 22px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+      align-items: end;
+      margin-bottom: 16px;
+    }
+
+    .upload-panel .dropzone {
+      min-height: 150px;
     }
 
     label {
@@ -515,6 +527,11 @@
     .signature-extra div { overflow-wrap: anywhere; }
     .signature-extra strong { color: #172033; }
 
+    .signature-validity-good {
+      color: var(--blue);
+      font-weight: 800;
+    }
+
     .hash {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       overflow-wrap: anywhere;
@@ -555,7 +572,7 @@
     .hidden { display: none !important; }
 
     @media (max-width: 980px) {
-      .hero, .main-grid { grid-template-columns: 1fr; }
+      .hero, .main-grid, .form-row { grid-template-columns: 1fr; }
       .summary { grid-template-columns: 1fr; }
       .block-summary { grid-template-columns: 1fr; }
       .topbar { align-items: flex-start; flex-direction: column; }
@@ -591,13 +608,28 @@
     </section>
 
     <main class="main-grid">
-      <section class="card panel">
-        <div class="field">
-          <label for="purpose">Contexto de uso</label>
-          <select id="purpose">
-            <option value="public">Perante pessoa jurídica de direito público ou sem acordo prévio entre particulares</option>
-            <option value="private">Relação entre particulares com meio de comprovação aceito pelas partes</option>
-          </select>
+      <section class="card panel upload-panel">
+        <div class="form-row">
+          <div class="field">
+            <label for="purpose">Contexto de uso</label>
+            <select id="purpose">
+              <option value="public">Perante pessoa jurídica de direito público ou sem acordo prévio entre particulares</option>
+              <option value="private">Relação entre particulares com meio de comprovação aceito pelas partes</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="docType">Tipo de documento original</label>
+            <select id="docType">
+              <option value="printed_bw">Texto impresso, sem ilustração, em preto e branco</option>
+              <option value="printed_bw_illustrated">Texto impresso, com ilustração, em preto e branco</option>
+              <option value="printed_color">Texto impresso, com ilustração e cores</option>
+              <option value="manuscript_bw">Texto manuscrito, com ou sem ilustração, em preto e branco</option>
+              <option value="manuscript_color">Texto manuscrito, com ou sem ilustração, em cores</option>
+              <option value="photo_poster">Fotografia ou cartaz</option>
+              <option value="plant_map">Planta ou mapa</option>
+            </select>
+          </div>
         </div>
 
         <input id="fileInput" type="file" accept="application/pdf,image/png,.pdf,.png" class="hidden" />
@@ -618,19 +650,6 @@
       </section>
 
       <section class="card panel" id="reportPanel">
-        <div class="field">
-          <label for="docType">Tipo de documento original</label>
-          <select id="docType">
-            <option value="printed_bw">Texto impresso, sem ilustração, em preto e branco</option>
-            <option value="printed_bw_illustrated">Texto impresso, com ilustração, em preto e branco</option>
-            <option value="printed_color">Texto impresso, com ilustração e cores</option>
-            <option value="manuscript_bw">Texto manuscrito, com ou sem ilustração, em preto e branco</option>
-            <option value="manuscript_color">Texto manuscrito, com ou sem ilustração, em cores</option>
-            <option value="photo_poster">Fotografia ou cartaz</option>
-            <option value="plant_map">Planta ou mapa</option>
-          </select>
-        </div>
-
         <div class="empty" id="emptyState">
           <div>
             <strong>Nenhum arquivo analisado.</strong>
@@ -1930,18 +1949,32 @@
         ? `${formatDateBR(firstSignature.certificateNotBefore)} a ${formatDateBR(firstSignature.certificateNotAfter)}`
         : 'Não localizada';
 
+      const signDate = firstSignature?.signDate ? new Date(firstSignature.signDate) : null;
+      const notBefore = firstSignature?.certificateNotBefore ? new Date(firstSignature.certificateNotBefore) : null;
+      const notAfter = firstSignature?.certificateNotAfter ? new Date(firstSignature.certificateNotAfter) : null;
+      const signedWithinCertificateValidity = Boolean(
+        signDate && notBefore && notAfter &&
+        !Number.isNaN(signDate.getTime()) &&
+        !Number.isNaN(notBefore.getTime()) &&
+        !Number.isNaN(notAfter.getTime()) &&
+        signDate >= notBefore &&
+        signDate <= notAfter
+      );
+
       return {
         arquivo: basic?.name || selectedFile?.name || 'Não localizado',
         assinanteNome: extracted.nome || 'Não localizado',
         assinanteCpf: formatCpfMasked(extracted.cpf),
         certificadoVigencia: certificateValidity,
-        dataAssinatura: formatDateTimeBR(firstSignature?.signDate)
+        dataAssinatura: formatDateTimeBR(firstSignature?.signDate),
+        signedWithinCertificateValidity
       };
     }
 
     function signaturePresentationText(data) {
       if (!data) return '';
-      return ` Arquivo: ${data.arquivo}. Assinante: ${data.assinanteNome}. CPF: ${data.assinanteCpf}. Vigência do certificado: ${data.certificadoVigencia}. Documento assinado em: ${data.dataAssinatura}.`;
+      const validityText = data.signedWithinCertificateValidity ? ' Assinado no período de validade do certificado.' : '';
+      return ` Arquivo: ${data.arquivo}. Assinante: ${data.assinanteNome}. CPF: ${data.assinanteCpf}. Vigência do certificado: ${data.certificadoVigencia}. Documento assinado em: ${data.dataAssinatura}.${validityText}`;
     }
 
     function signaturePresentationHtml(data) {
@@ -1953,6 +1986,7 @@
           <div><strong>CPF:</strong> ${escapeHtml(data.assinanteCpf)}</div>
           <div><strong>Vigência do certificado:</strong> ${escapeHtml(data.certificadoVigencia)}</div>
           <div><strong>Documento assinado em:</strong> ${escapeHtml(data.dataAssinatura)}</div>
+          ${data.signedWithinCertificateValidity ? '<div class="signature-validity-good">Assinado no período de validade do certificado</div>' : ''}
         </div>
       `;
     }
