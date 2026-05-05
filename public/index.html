@@ -771,11 +771,13 @@
         let pdfImageInfo = null;
         let pdfaValidation = null;
         let signatureValidation = null;
+        let pdfProfile = null;
         let pngInfo = null;
 
         if (basic.kind === 'PDF') {
           pdfInfo = inspectPdf(bytes);
           pdfImageInfo = await inspectPdfImagesWithPdfjs(buffer);
+          pdfProfile = classifyPdfDocument(pdfInfo, pdfImageInfo);
           pdfaValidation = await validatePdfAWithBackend(selectedFile);
           signatureValidation = await validateSignatureWithBackend(selectedFile);
         }
@@ -785,7 +787,8 @@
         }
 
         evaluateFormat(details, basic, rule, pdfInfo, pdfaValidation);
-        evaluateResolution(details, basic, rule, pngInfo, pdfImageInfo);
+        evaluatePdfNature(details, basic, pdfProfile);
+        evaluateResolution(details, basic, rule, pngInfo, pdfImageInfo, pdfProfile);
         evaluateColor(details, basic, rule, pngInfo, pdfImageInfo);
         evaluateSignature(details, basic, pdfInfo, purpose, signatureValidation);
         evaluateMetadata(details, basic, pdfInfo, pngInfo);
@@ -1530,7 +1533,108 @@
       }
     }
 
-    function evaluateResolution(details, basic, rule, pngInfo, pdfImageInfo) {
+    function classifyPdfDocument(pdfInfo, pdfImageInfo) {
+      if (!pdfImageInfo || pdfImageInfo.ok !== true) {
+        return {
+          type: 'unknown',
+          label: 'Natureza do PDF não classificada',
+          status: 'warn',
+          pageCount: pdfInfo?.pageCount || 0,
+          imageCount: 0,
+          relevantImageCount: 0,
+          pageLikeImageCount: 0,
+          guidance: pdfImageInfo?.error || 'Não foi possível classificar se o PDF é nato-digital, digitalizado ou misto.'
+        };
+      }
+
+      const images = Array.isArray(pdfImageInfo.images) ? pdfImageInfo.images : [];
+      const pageCount = Number(pdfImageInfo.pageCount || pdfInfo?.pageCount || 0);
+      const relevantImages = images.filter(image => Number(image.areaRatio || 0) >= 0.05);
+      const pageLikeImages = images.filter(image => Number(image.areaRatio || 0) >= 0.55);
+      const pagesWithPageLikeImages = new Set(pageLikeImages.map(image => image.page)).size;
+      const pagesRequiredForScanned = pageCount ? Math.max(1, Math.ceil(pageCount * 0.65)) : 1;
+
+      if (!images.length) {
+        return {
+          type: 'native_or_vector',
+          label: 'PDF nato-digital ou vetorial',
+          status: 'neutral',
+          pageCount,
+          imageCount: 0,
+          relevantImageCount: 0,
+          pageLikeImageCount: 0,
+          guidance: 'Não foram localizadas imagens rasterizadas internas. A regra de dpi não é aplicada automaticamente a texto vetorial ou PDF nato-digital.'
+        };
+      }
+
+      if (pageLikeImages.length && pagesWithPageLikeImages >= pagesRequiredForScanned) {
+        return {
+          type: 'scanned_page_images',
+          label: 'PDF digitalizado por imagem de página',
+          status: 'neutral',
+          pageCount,
+          imageCount: images.length,
+          relevantImageCount: relevantImages.length,
+          pageLikeImageCount: pageLikeImages.length,
+          pageLikeImages,
+          guidance: 'Foram localizadas imagens com área compatível com página digitalizada. A resolução efetiva deve atender ao dpi mínimo do tipo documental.'
+        };
+      }
+
+      if (pageLikeImages.length) {
+        return {
+          type: 'mixed_with_page_images',
+          label: 'PDF misto com imagem de página',
+          status: 'neutral',
+          pageCount,
+          imageCount: images.length,
+          relevantImageCount: relevantImages.length,
+          pageLikeImageCount: pageLikeImages.length,
+          pageLikeImages,
+          guidance: 'Foram localizadas imagens de página em parte do PDF. A resolução é avaliada sobre essas imagens.'
+        };
+      }
+
+      if (!relevantImages.length) {
+        return {
+          type: 'native_with_small_images',
+          label: 'PDF nato-digital ou misto com imagens pequenas',
+          status: 'neutral',
+          pageCount,
+          imageCount: images.length,
+          relevantImageCount: 0,
+          pageLikeImageCount: 0,
+          guidance: 'As imagens internas têm área inferior a 5% da página. Elas podem corresponder a selo, logotipo, QR Code ou elemento gráfico, não à digitalização da página. A regra de dpi não é aplicada automaticamente a essas imagens pequenas.'
+        };
+      }
+
+      return {
+        type: 'mixed_without_page_images',
+        label: 'PDF misto sem imagem de página inteira',
+        status: 'warn',
+        pageCount,
+        imageCount: images.length,
+        relevantImageCount: relevantImages.length,
+        pageLikeImageCount: 0,
+        relevantImages,
+        guidance: 'Foram localizadas imagens internas relevantes, mas nenhuma imagem com área compatível com página digitalizada. A resolução dessas imagens é informativa e não gera reprovação automática do documento.'
+      };
+    }
+
+    function evaluatePdfNature(details, basic, pdfProfile) {
+      if (basic.kind !== 'PDF' || !pdfProfile) return;
+
+      const imageText = `${pdfProfile.imageCount || 0} imagem(ns) interna(s); ${pdfProfile.relevantImageCount || 0} relevante(s); ${pdfProfile.pageLikeImageCount || 0} compatível(is) com página`;
+
+      details.push({
+        req: 'Natureza técnica do PDF',
+        status: pdfProfile.status || 'neutral',
+        result: pdfProfile.label || 'Natureza não classificada',
+        guidance: `${pdfProfile.guidance || 'Classificação preliminar feita a partir das imagens internas expostas pelo PDF.js.'} ${imageText}.`
+      });
+    }
+
+    function evaluateResolution(details, basic, rule, pngInfo, pdfImageInfo, pdfProfile) {
       if (basic.kind === 'PNG') {
         if (pngInfo?.hasPhys && pngInfo.dpiX && pngInfo.dpiY) {
           const minDpi = Math.min(pngInfo.dpiX, pngInfo.dpiY);
@@ -1547,27 +1651,52 @@
 
       if (basic.kind === 'PDF') {
         if (pdfImageInfo?.ok && pdfImageInfo.images.length) {
-          const sourceImages = pdfImageInfo.relevantImages.length ? pdfImageInfo.relevantImages : pdfImageInfo.images;
-          const minDpi = pdfImageInfo.minDpi;
-          const lowImages = sourceImages.filter(image => Number.isFinite(image.minDpi) && image.minDpi < rule.minDpi);
-          const relevantText = pdfImageInfo.relevantImages.length
-            ? `${pdfImageInfo.relevantImages.length} imagem(ns) relevante(s) de ${pdfImageInfo.images.length} imagem(ns) interna(s)`
-            : `${pdfImageInfo.images.length} imagem(ns) interna(s), sem área mínima de 5% da página`;
-          const sample = formatPdfImageSample(lowImages.length ? lowImages : sourceImages);
+          const pageImages = Array.isArray(pdfProfile?.pageLikeImages) ? pdfProfile.pageLikeImages : [];
+
+          if (!pageImages.length) {
+            const sourceImages = pdfImageInfo.relevantImages.length ? pdfImageInfo.relevantImages : pdfImageInfo.images;
+            const sample = formatPdfImageSample(sourceImages);
+            const status = pdfProfile?.type === 'mixed_without_page_images' ? 'warn' : 'neutral';
+            const result = pdfProfile?.type === 'mixed_without_page_images'
+              ? 'Resolução informativa. Imagem de página inteira não localizada'
+              : 'Não aplicável automaticamente a imagens pequenas ou PDF nato-digital';
+            details.push({
+              req: `Resolução mínima de ${rule.minDpi} dpi`,
+              status,
+              result,
+              guidance: `Não foi localizada imagem com área compatível com página digitalizada. A ferramenta não reprova automaticamente o PDF por dpi de imagens pequenas, selos, QR Codes, logotipos ou elementos gráficos. Amostra: ${sample}.`
+            });
+            return;
+          }
+
+          const dpiValues = pageImages
+            .map(image => image.minDpi)
+            .filter(value => Number.isFinite(value) && value > 0);
+          const minDpi = dpiValues.length ? Math.min(...dpiValues) : null;
+          const lowImages = pageImages.filter(image => Number.isFinite(image.minDpi) && image.minDpi < rule.minDpi);
+          const sample = formatPdfImageSample(lowImages.length ? lowImages : pageImages);
+          const relevantText = `${pageImages.length} imagem(ns) com área compatível com página digitalizada, de ${pdfImageInfo.images.length} imagem(ns) interna(s)`;
 
           if (Number.isFinite(minDpi) && minDpi >= rule.minDpi) {
             details.push({
               req: `Resolução mínima de ${rule.minDpi} dpi`,
               status: 'ok',
-              result: `Menor resolução efetiva calculada: ${formatDpi(minDpi)}`,
+              result: `Menor resolução efetiva de imagem de página: ${formatDpi(minDpi)}`,
               guidance: `Foram analisadas ${relevantText}. Cálculo feito pela relação entre pixels da imagem incorporada e tamanho físico de exibição no PDF. Amostra: ${sample}.`
+            });
+          } else if (Number.isFinite(minDpi)) {
+            details.push({
+              req: `Resolução mínima de ${rule.minDpi} dpi`,
+              status: 'fail',
+              result: `Não conforme. Menor resolução efetiva de imagem de página: ${formatDpi(minDpi)}`,
+              guidance: `Imagem de página abaixo do parâmetro mínimo do tipo documental selecionado. Foram analisadas ${relevantText}. Amostra: ${sample}.`
             });
           } else {
             details.push({
               req: `Resolução mínima de ${rule.minDpi} dpi`,
-              status: 'fail',
-              result: `Não conforme. Menor resolução efetiva calculada: ${formatDpi(minDpi)}`,
-              guidance: `Imagem abaixo do parâmetro mínimo do tipo documental selecionado. Foram analisadas ${relevantText}. Amostra: ${sample}.`
+              status: 'warn',
+              result: 'Não foi possível calcular o dpi das imagens de página',
+              guidance: `Foram localizadas imagens com área compatível com página, mas o PDF.js não expôs dados suficientes para cálculo do dpi. Amostra: ${sample}.`
             });
           }
           return;
@@ -1576,9 +1705,9 @@
         if (pdfImageInfo?.ok && !pdfImageInfo.images.length) {
           details.push({
             req: `Resolução mínima de ${rule.minDpi} dpi`,
-            status: 'warn',
-            result: 'Imagem rasterizada interna não localizada',
-            guidance: 'O PDF pode conter texto vetorial ou estrutura que não expõe imagem rasterizada ao leitor do navegador. Para título digitalizado, recomenda-se validar por ferramenta técnica complementar.'
+            status: 'neutral',
+            result: 'Não aplicável automaticamente a PDF sem imagem rasterizada',
+            guidance: 'O PDF pode conter texto vetorial ou estrutura nato-digital. A regra de dpi não é aplicada automaticamente quando não há imagem de página digitalizada.'
           });
           return;
         }
