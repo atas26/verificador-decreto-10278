@@ -486,7 +486,7 @@
       <div class="card hero-main">
         <div class="eyebrow">Protótipo técnico</div>
         <h1>Triagem preliminar de documentos digitalizados</h1>
-        <p class="lead">Envie um PDF ou PNG para verificar formato, hash, validação PDF/A por backend veraPDF quando disponível, assinatura digital por microserviço técnico, metadados e parâmetros compatíveis com o Decreto nº 10.278/2020.</p>
+        <p class="lead">Envie um PDF ou PNG para verificar formato, hash, validação PDF/A por backend veraPDF, assinatura digital ICP-Brasil por microserviço técnico, metadados e parâmetros compatíveis com o Decreto nº 10.278/2020.</p>
         <div class="notice">O resultado é uma conferência automatizada do arquivo. Não substitui qualificação registral, validação oficial de assinatura digital, exame de autoria, conferência com o original físico ou análise jurídica do título.</div>
       </div>
 
@@ -607,7 +607,7 @@
     </main>
 
     <footer class="footer">
-      Protótipo para triagem técnica preliminar. Base normativa: Decreto nº 10.278/2020, anexos I e II. Última atualização visual: 04/05/2026.
+      Protótipo para triagem técnica preliminar. Base normativa: Decreto nº 10.278/2020, anexos I e II. Última atualização técnica: 05/05/2026.
     </footer>
   </div>
 
@@ -1730,11 +1730,15 @@
                 ? ` O PDF contém atualização incremental posterior classificada como técnica permitida: ${signatureValidation.postSignatureUpdateType || 'tipo não informado'}.${signatureValidation.postSignatureUpdateMessage ? ` ${signatureValidation.postSignatureUpdateMessage}` : ''}`
                 : '';
 
+              const guidanceOk = hasDss
+                ? `Assinatura PAdES-B validada. O certificado do assinante foi identificado como certificado ICP-Brasil. A cadeia de certificação foi validada até a AC-Raiz da ICP-Brasil.${revocationInfo} O PDF contém atualização incremental posterior classificada como inclusão técnica de DSS/VRI, certificados e LCRs.${timestampInfo} ${policyInfo}${standard}${level}${signers}${warnings}`
+                : `Assinatura digital validada. O certificado do assinante foi identificado como certificado ICP-Brasil. A cadeia de certificação foi validada até a AC-Raiz da ICP-Brasil.${revocationInfo}${timestampInfo} ${policyInfo}${standard}${level}${signers}${warnings}`;
+
               details.push({
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'ok',
                 result: classification,
-                guidance: `${signatureValidation.message || 'Assinatura digital validada.'}${standard}${level}${signers}${chainPath}${revocationInfo}${incrementalInfo}${timestampInfo} ${policyInfo}${warnings}`
+                guidance: guidanceOk
               });
               return;
             }
