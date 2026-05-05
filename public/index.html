@@ -425,42 +425,6 @@
     .tag.warn { background: var(--amber-bg); color: var(--amber); }
     .tag.neutral { background: var(--gray-bg); color: #475467; }
 
-    .block-summary {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-      margin: 0 0 16px;
-    }
-
-    .block-card {
-      background: #fff;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 14px;
-    }
-
-    .block-card-title {
-      font-size: 12px;
-      color: var(--muted);
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      margin-bottom: 6px;
-    }
-
-    .block-card-result {
-      font-size: 14px;
-      font-weight: 800;
-      color: #243044;
-      margin-top: 8px;
-    }
-
-    .block-card-text {
-      margin-top: 6px;
-      font-size: 13px;
-      color: #475467;
-    }
-
     .hash {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       overflow-wrap: anywhere;
@@ -503,7 +467,6 @@
     @media (max-width: 980px) {
       .hero, .main-grid { grid-template-columns: 1fr; }
       .summary { grid-template-columns: 1fr; }
-      .block-summary { grid-template-columns: 1fr; }
       .topbar { align-items: flex-start; flex-direction: column; }
       .hero-main { padding: 26px; }
     }
@@ -523,7 +486,7 @@
       <div class="card hero-main">
         <div class="eyebrow">Protótipo técnico</div>
         <h1>Triagem preliminar de documentos digitalizados</h1>
-        <p class="lead">Envie um PDF ou PNG para verificar formato, hash, validação PDF/A por backend veraPDF, assinatura digital ICP-Brasil por microserviço técnico, metadados e parâmetros compatíveis com o Decreto nº 10.278/2020.</p>
+        <p class="lead">Envie um PDF ou PNG para verificar formato, hash, validação PDF/A por backend veraPDF quando disponível, assinatura digital por microserviço técnico, metadados e parâmetros compatíveis com o Decreto nº 10.278/2020.</p>
         <div class="notice">O resultado é uma conferência automatizada do arquivo. Não substitui qualificação registral, validação oficial de assinatura digital, exame de autoria, conferência com o original físico ou análise jurídica do título.</div>
       </div>
 
@@ -624,8 +587,6 @@
             </div>
           </div>
 
-          <div id="blockSummary" class="block-summary" aria-label="Síntese por blocos"></div>
-
           <table aria-label="Relatório técnico preliminar">
             <thead>
               <tr>
@@ -646,7 +607,7 @@
     </main>
 
     <footer class="footer">
-      Protótipo para triagem técnica preliminar. Base normativa: Decreto nº 10.278/2020, anexos I e II. Última atualização técnica: 05/05/2026.
+      Protótipo para triagem técnica preliminar. Base normativa: Decreto nº 10.278/2020, anexos I e II. Última atualização visual: 04/05/2026.
     </footer>
   </div>
 
@@ -735,7 +696,6 @@
       metricSize: document.getElementById('metricSize'),
       metricStatus: document.getElementById('metricStatus'),
       resultsBody: document.getElementById('resultsBody'),
-      blockSummary: document.getElementById('blockSummary'),
       copyBtn: document.getElementById('copyBtn'),
       downloadBtn: document.getElementById('downloadBtn')
     };
@@ -811,13 +771,11 @@
         let pdfImageInfo = null;
         let pdfaValidation = null;
         let signatureValidation = null;
-        let pdfProfile = null;
         let pngInfo = null;
 
         if (basic.kind === 'PDF') {
           pdfInfo = inspectPdf(bytes);
           pdfImageInfo = await inspectPdfImagesWithPdfjs(buffer);
-          pdfProfile = classifyPdfDocument(pdfInfo, pdfImageInfo);
           pdfaValidation = await validatePdfAWithBackend(selectedFile);
           signatureValidation = await validateSignatureWithBackend(selectedFile);
         }
@@ -827,8 +785,7 @@
         }
 
         evaluateFormat(details, basic, rule, pdfInfo, pdfaValidation);
-        evaluatePdfNature(details, basic, pdfProfile);
-        evaluateResolution(details, basic, rule, pngInfo, pdfImageInfo, pdfProfile);
+        evaluateResolution(details, basic, rule, pngInfo, pdfImageInfo);
         evaluateColor(details, basic, rule, pngInfo, pdfImageInfo);
         evaluateSignature(details, basic, pdfInfo, purpose, signatureValidation);
         evaluateMetadata(details, basic, pdfInfo, pngInfo);
@@ -1573,108 +1530,7 @@
       }
     }
 
-    function classifyPdfDocument(pdfInfo, pdfImageInfo) {
-      if (!pdfImageInfo || pdfImageInfo.ok !== true) {
-        return {
-          type: 'unknown',
-          label: 'Natureza do PDF não classificada',
-          status: 'warn',
-          pageCount: pdfInfo?.pageCount || 0,
-          imageCount: 0,
-          relevantImageCount: 0,
-          pageLikeImageCount: 0,
-          guidance: pdfImageInfo?.error || 'Não foi possível classificar se o PDF é nato-digital, digitalizado ou misto.'
-        };
-      }
-
-      const images = Array.isArray(pdfImageInfo.images) ? pdfImageInfo.images : [];
-      const pageCount = Number(pdfImageInfo.pageCount || pdfInfo?.pageCount || 0);
-      const relevantImages = images.filter(image => Number(image.areaRatio || 0) >= 0.05);
-      const pageLikeImages = images.filter(image => Number(image.areaRatio || 0) >= 0.55);
-      const pagesWithPageLikeImages = new Set(pageLikeImages.map(image => image.page)).size;
-      const pagesRequiredForScanned = pageCount ? Math.max(1, Math.ceil(pageCount * 0.65)) : 1;
-
-      if (!images.length) {
-        return {
-          type: 'native_or_vector',
-          label: 'PDF nato-digital ou vetorial',
-          status: 'neutral',
-          pageCount,
-          imageCount: 0,
-          relevantImageCount: 0,
-          pageLikeImageCount: 0,
-          guidance: 'Não foram localizadas imagens rasterizadas internas. A regra de dpi não é aplicada automaticamente a texto vetorial ou PDF nato-digital.'
-        };
-      }
-
-      if (pageLikeImages.length && pagesWithPageLikeImages >= pagesRequiredForScanned) {
-        return {
-          type: 'scanned_page_images',
-          label: 'PDF digitalizado por imagem de página',
-          status: 'neutral',
-          pageCount,
-          imageCount: images.length,
-          relevantImageCount: relevantImages.length,
-          pageLikeImageCount: pageLikeImages.length,
-          pageLikeImages,
-          guidance: 'Foram localizadas imagens com área compatível com página digitalizada. A resolução efetiva deve atender ao dpi mínimo do tipo documental.'
-        };
-      }
-
-      if (pageLikeImages.length) {
-        return {
-          type: 'mixed_with_page_images',
-          label: 'PDF misto com imagem de página',
-          status: 'neutral',
-          pageCount,
-          imageCount: images.length,
-          relevantImageCount: relevantImages.length,
-          pageLikeImageCount: pageLikeImages.length,
-          pageLikeImages,
-          guidance: 'Foram localizadas imagens de página em parte do PDF. A resolução é avaliada sobre essas imagens.'
-        };
-      }
-
-      if (!relevantImages.length) {
-        return {
-          type: 'native_with_small_images',
-          label: 'PDF nato-digital ou misto com imagens pequenas',
-          status: 'neutral',
-          pageCount,
-          imageCount: images.length,
-          relevantImageCount: 0,
-          pageLikeImageCount: 0,
-          guidance: 'As imagens internas têm área inferior a 5% da página. Elas podem corresponder a selo, logotipo, QR Code ou elemento gráfico, não à digitalização da página. A regra de dpi não é aplicada automaticamente a essas imagens pequenas.'
-        };
-      }
-
-      return {
-        type: 'mixed_without_page_images',
-        label: 'PDF misto sem imagem de página inteira',
-        status: 'warn',
-        pageCount,
-        imageCount: images.length,
-        relevantImageCount: relevantImages.length,
-        pageLikeImageCount: 0,
-        relevantImages,
-        guidance: 'Foram localizadas imagens internas relevantes, mas nenhuma imagem com área compatível com página digitalizada. A resolução dessas imagens é informativa e não gera reprovação automática do documento.'
-      };
-    }
-
-    function evaluatePdfNature(details, basic, pdfProfile) {
-      if (basic.kind !== 'PDF' || !pdfProfile) return;
-
-      const imageText = `${pdfProfile.imageCount || 0} imagem(ns) interna(s); ${pdfProfile.relevantImageCount || 0} relevante(s); ${pdfProfile.pageLikeImageCount || 0} compatível(is) com página`;
-
-      details.push({
-        req: 'Natureza técnica do PDF',
-        status: pdfProfile.status || 'neutral',
-        result: pdfProfile.label || 'Natureza não classificada',
-        guidance: `${pdfProfile.guidance || 'Classificação preliminar feita a partir das imagens internas expostas pelo PDF.js.'} ${imageText}.`
-      });
-    }
-
-    function evaluateResolution(details, basic, rule, pngInfo, pdfImageInfo, pdfProfile) {
+    function evaluateResolution(details, basic, rule, pngInfo, pdfImageInfo) {
       if (basic.kind === 'PNG') {
         if (pngInfo?.hasPhys && pngInfo.dpiX && pngInfo.dpiY) {
           const minDpi = Math.min(pngInfo.dpiX, pngInfo.dpiY);
@@ -1691,52 +1547,27 @@
 
       if (basic.kind === 'PDF') {
         if (pdfImageInfo?.ok && pdfImageInfo.images.length) {
-          const pageImages = Array.isArray(pdfProfile?.pageLikeImages) ? pdfProfile.pageLikeImages : [];
-
-          if (!pageImages.length) {
-            const sourceImages = pdfImageInfo.relevantImages.length ? pdfImageInfo.relevantImages : pdfImageInfo.images;
-            const sample = formatPdfImageSample(sourceImages);
-            const status = pdfProfile?.type === 'mixed_without_page_images' ? 'warn' : 'neutral';
-            const result = pdfProfile?.type === 'mixed_without_page_images'
-              ? 'Resolução informativa. Imagem de página inteira não localizada'
-              : 'Não aplicável automaticamente a imagens pequenas ou PDF nato-digital';
-            details.push({
-              req: `Resolução mínima de ${rule.minDpi} dpi`,
-              status,
-              result,
-              guidance: `Não foi localizada imagem com área compatível com página digitalizada. A ferramenta não reprova automaticamente o PDF por dpi de imagens pequenas, selos, QR Codes, logotipos ou elementos gráficos. Amostra: ${sample}.`
-            });
-            return;
-          }
-
-          const dpiValues = pageImages
-            .map(image => image.minDpi)
-            .filter(value => Number.isFinite(value) && value > 0);
-          const minDpi = dpiValues.length ? Math.min(...dpiValues) : null;
-          const lowImages = pageImages.filter(image => Number.isFinite(image.minDpi) && image.minDpi < rule.minDpi);
-          const sample = formatPdfImageSample(lowImages.length ? lowImages : pageImages);
-          const relevantText = `${pageImages.length} imagem(ns) com área compatível com página digitalizada, de ${pdfImageInfo.images.length} imagem(ns) interna(s)`;
+          const sourceImages = pdfImageInfo.relevantImages.length ? pdfImageInfo.relevantImages : pdfImageInfo.images;
+          const minDpi = pdfImageInfo.minDpi;
+          const lowImages = sourceImages.filter(image => Number.isFinite(image.minDpi) && image.minDpi < rule.minDpi);
+          const relevantText = pdfImageInfo.relevantImages.length
+            ? `${pdfImageInfo.relevantImages.length} imagem(ns) relevante(s) de ${pdfImageInfo.images.length} imagem(ns) interna(s)`
+            : `${pdfImageInfo.images.length} imagem(ns) interna(s), sem área mínima de 5% da página`;
+          const sample = formatPdfImageSample(lowImages.length ? lowImages : sourceImages);
 
           if (Number.isFinite(minDpi) && minDpi >= rule.minDpi) {
             details.push({
               req: `Resolução mínima de ${rule.minDpi} dpi`,
               status: 'ok',
-              result: `Menor resolução efetiva de imagem de página: ${formatDpi(minDpi)}`,
+              result: `Menor resolução efetiva calculada: ${formatDpi(minDpi)}`,
               guidance: `Foram analisadas ${relevantText}. Cálculo feito pela relação entre pixels da imagem incorporada e tamanho físico de exibição no PDF. Amostra: ${sample}.`
-            });
-          } else if (Number.isFinite(minDpi)) {
-            details.push({
-              req: `Resolução mínima de ${rule.minDpi} dpi`,
-              status: 'fail',
-              result: `Não conforme. Menor resolução efetiva de imagem de página: ${formatDpi(minDpi)}`,
-              guidance: `Imagem de página abaixo do parâmetro mínimo do tipo documental selecionado. Foram analisadas ${relevantText}. Amostra: ${sample}.`
             });
           } else {
             details.push({
               req: `Resolução mínima de ${rule.minDpi} dpi`,
-              status: 'warn',
-              result: 'Não foi possível calcular o dpi das imagens de página',
-              guidance: `Foram localizadas imagens com área compatível com página, mas o PDF.js não expôs dados suficientes para cálculo do dpi. Amostra: ${sample}.`
+              status: 'fail',
+              result: `Não conforme. Menor resolução efetiva calculada: ${formatDpi(minDpi)}`,
+              guidance: `Imagem abaixo do parâmetro mínimo do tipo documental selecionado. Foram analisadas ${relevantText}. Amostra: ${sample}.`
             });
           }
           return;
@@ -1745,9 +1576,9 @@
         if (pdfImageInfo?.ok && !pdfImageInfo.images.length) {
           details.push({
             req: `Resolução mínima de ${rule.minDpi} dpi`,
-            status: 'neutral',
-            result: 'Não aplicável automaticamente a PDF sem imagem rasterizada',
-            guidance: 'O PDF pode conter texto vetorial ou estrutura nato-digital. A regra de dpi não é aplicada automaticamente quando não há imagem de página digitalizada.'
+            status: 'warn',
+            result: 'Imagem rasterizada interna não localizada',
+            guidance: 'O PDF pode conter texto vetorial ou estrutura que não expõe imagem rasterizada ao leitor do navegador. Para título digitalizado, recomenda-se validar por ferramenta técnica complementar.'
           });
           return;
         }
@@ -1850,9 +1681,18 @@
             ? ` Cadeia validada: ${signatureValidation.chainPath.join(' > ')}.`
             : '';
 
-          const revocationInfo = formatSignatureRevocationInfo(signatureValidation);
-          const timestampInfo = formatSignatureTimestampInfo(signatureValidation);
-          const policyInfo = formatSignaturePolicyInfo(signatureValidation);
+          const crlInfo = signatureValidation.revocationChecked === true
+            ? ` Consulta de revogação realizada por ${signatureValidation.revocationMethod || 'método informado pelo validador'}${signatureValidation.revoked === false ? ', sem identificação de revogação' : ''}${signatureValidation.crlThisUpdate ? `. LCR emitida em ${signatureValidation.crlThisUpdate}` : ''}${signatureValidation.crlNextUpdate ? `, com próxima atualização em ${signatureValidation.crlNextUpdate}` : ''}.`
+            : '';
+
+          const timestampInfo = signatureValidation.timestampPresent === true
+            ? ` Carimbo do tempo localizado${signatureValidation.timestampValid === true ? ' e validado' : ''}${signatureValidation.timestampTime ? ` em ${signatureValidation.timestampTime}` : ''}.`
+            : ' Não foi localizado carimbo do tempo documental.';
+
+          const policyInfo = signatureValidation.policyOid
+            ? ` Política de assinatura identificada: ${signatureValidation.policyName || signatureValidation.policyOid}.`
+            : ' Política de assinatura ICP-Brasil tipificada não declarada no pacote assinado.';
+
           const standard = signatureValidation.standard ? ` Classificação técnica: ${signatureValidation.standard}.` : '';
           const level = signatureValidation.validationLevel ? ` Nível técnico: ${signatureValidation.validationLevel}.` : '';
           const signers = Array.isArray(signatureValidation.signatures) && signatureValidation.signatures.length
@@ -1881,31 +1721,20 @@
               (assinaturaComCadeiaRevogacao && documentoFinalAceitavel);
 
             if (assinaturaConforme) {
-              const hasDss =
+              const dss =
                 resultado === 'valid_icp_brasil_chain_crl_with_permitted_incremental_update' ||
                 signatureValidation.postSignatureUpdateType === 'dss_lt_upgrade_no_tsa' ||
                 String(signatureValidation.standard || '').toLowerCase().includes('dss');
 
-              const hasTimestamp = signatureValidation.timestampPresent === true && signatureValidation.timestampValid === true;
-              const classification = hasTimestamp && hasDss
-                ? 'Classificação técnica PAdES-T com DSS'
-                : hasTimestamp
-                  ? 'Classificação técnica PAdES-T'
-                  : hasDss
-                    ? 'Classificação técnica PAdES-B com DSS'
-                    : 'Assinatura digital ICP-Brasil validada';
-
-              const dssInfo = hasDss
-                ? ' O PDF contém atualização incremental posterior classificada como inclusão técnica de DSS/VRI, certificados e LCRs.'
+              const incrementalInfo = signatureValidation.postSignatureUpdateAccepted === true
+                ? ` O PDF contém atualização incremental posterior classificada como técnica permitida: ${signatureValidation.postSignatureUpdateType || 'tipo não informado'}.${signatureValidation.postSignatureUpdateMessage ? ` ${signatureValidation.postSignatureUpdateMessage}` : ''}`
                 : '';
-
-              const guidanceOk = `Assinatura PAdES-B validada. O certificado do assinante foi identificado como certificado ICP-Brasil. A cadeia de certificação foi validada até a AC-Raiz da ICP-Brasil.${revocationInfo}${dssInfo}${timestampInfo} ${policyInfo}${signers}`;
 
               details.push({
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'ok',
-                result: classification,
-                guidance: guidanceOk
+                result: dss ? 'Conforme, com classificação técnica PAdES-B com DSS' : 'Conforme',
+                guidance: `${signatureValidation.message || 'Assinatura digital validada.'}${standard}${level}${signers}${chainPath}${crlInfo}${incrementalInfo}${timestampInfo} ${policyInfo}${warnings}`
               });
               return;
             }
@@ -1915,7 +1744,7 @@
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'fail',
                 result: 'Certificado revogado',
-                guidance: `${signatureValidation.message || 'O certificado do assinante consta como revogado na fonte consultada.'}${standard}${level}${signers}${chainPath}${revocationInfo}${warnings}`
+                guidance: `${signatureValidation.message || 'O certificado do assinante consta como revogado na fonte consultada.'}${standard}${level}${signers}${chainPath}${crlInfo}${warnings}`
               });
               return;
             }
@@ -1935,7 +1764,7 @@
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'warn',
                 result: 'Assinatura válida na revisão assinada, mas PDF final não aceito automaticamente',
-                guidance: `${signatureValidation.message || 'A assinatura foi validada sobre a revisão assinada, mas o PDF final contém atualização posterior não classificada como técnica permitida.'}${standard}${level}${signers}${chainPath}${revocationInfo}${signatureValidation.postSignatureUpdateMessage ? ` ${signatureValidation.postSignatureUpdateMessage}` : ''}${warnings}`
+                guidance: `${signatureValidation.message || 'A assinatura foi validada sobre a revisão assinada, mas o PDF final contém atualização posterior não classificada como técnica permitida.'}${standard}${level}${signers}${chainPath}${crlInfo}${signatureValidation.postSignatureUpdateMessage ? ` ${signatureValidation.postSignatureUpdateMessage}` : ''}${warnings}`
               });
               return;
             }
@@ -1965,7 +1794,7 @@
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'warn',
                 result: 'Assinatura ICP-Brasil validada parcialmente',
-                guidance: `${signatureValidation.message || 'Assinatura digital validada, mas ainda há critérios técnicos não concluídos para aceitação automática.'}${standard}${level}${signers}${chainPath}${revocationInfo}${timestampInfo} ${policyInfo}${warnings}`
+                guidance: `${signatureValidation.message || 'Assinatura digital validada, mas ainda há critérios técnicos não concluídos para aceitação automática.'}${standard}${level}${signers}${chainPath}${crlInfo}${timestampInfo} ${policyInfo}${warnings}`
               });
               return;
             }
@@ -2032,60 +1861,6 @@
         result: 'Arquivo não reconhecido',
         guidance: 'Não foi possível procurar assinatura digital em arquivo não reconhecido.'
       });
-    }
-
-    function formatSignatureRevocationInfo(signatureValidation) {
-      if (signatureValidation?.revocationChecked !== true) {
-        return '';
-      }
-
-      const method = String(signatureValidation.revocationMethod || '').toUpperCase();
-
-      if (signatureValidation.revoked === true) {
-        const date = signatureValidation.revocationDate ? ` em ${signatureValidation.revocationDate}` : '';
-        const reason = signatureValidation.revocationReason ? ` Motivo: ${signatureValidation.revocationReason}.` : '';
-        return ` Consulta de revogação realizada por ${method || 'método informado pelo validador'}. O certificado consta como revogado${date}.${reason}`;
-      }
-
-      if (method === 'OCSP') {
-        const status = signatureValidation.ocspStatus ? ` Status OCSP: ${signatureValidation.ocspStatus}.` : '';
-        const producedAt = signatureValidation.ocspProducedAt ? ` Resposta produzida em ${signatureValidation.ocspProducedAt}.` : '';
-        const thisUpdate = signatureValidation.ocspThisUpdate ? ` Atualização informada em ${signatureValidation.ocspThisUpdate}.` : '';
-        const nextUpdate = signatureValidation.ocspNextUpdate ? ` Próxima atualização em ${signatureValidation.ocspNextUpdate}.` : '';
-        return ` Consulta de revogação realizada por OCSP, sem identificação de revogação.${status}${producedAt}${thisUpdate}${nextUpdate}`;
-      }
-
-      if (method === 'CRL' || method === 'LCR') {
-        const thisUpdate = signatureValidation.crlThisUpdate ? ` LCR emitida em ${signatureValidation.crlThisUpdate}` : '';
-        const nextUpdate = signatureValidation.crlNextUpdate ? `, com próxima atualização em ${signatureValidation.crlNextUpdate}` : '';
-        const issuer = signatureValidation.crlIssuer ? ` Emissor da LCR: ${signatureValidation.crlIssuer}.` : '';
-        return ` Consulta de revogação realizada por LCR, sem identificação de revogação.${thisUpdate}${nextUpdate}.${issuer}`;
-      }
-
-      return ` Consulta de revogação realizada por ${signatureValidation.revocationMethod || 'método informado pelo validador'}, sem identificação de revogação.`;
-    }
-
-    function formatSignatureTimestampInfo(signatureValidation) {
-      if (signatureValidation?.timestampPresent === true) {
-        const valid = signatureValidation.timestampValid === true ? ' e validado' : '';
-        const time = signatureValidation.timestampTime ? ` em ${signatureValidation.timestampTime}` : '';
-        const authority = signatureValidation.timestampAuthority ? ` Autoridade de carimbo do tempo: ${signatureValidation.timestampAuthority}.` : '';
-        return ` Carimbo do tempo localizado${valid}${time}.${authority}`;
-      }
-
-      return ' Não foi localizado carimbo do tempo documental. A classificação permanece como PAdES-B com DSS, sem conclusão como PAdES-LT.';
-    }
-
-    function formatSignaturePolicyInfo(signatureValidation) {
-      if (signatureValidation?.policyDeclared === true && signatureValidation?.policyRecognized === true) {
-        return ` Política de assinatura ICP-Brasil declarada: ${signatureValidation.policyName || signatureValidation.policyOid}.`;
-      }
-
-      if (signatureValidation?.policyDeclared === true) {
-        return ` Política de assinatura declarada no pacote assinado, mas não reconhecida como política ICP-Brasil tipificada pela ferramenta: ${signatureValidation.policyOid || 'OID não informado'}.`;
-      }
-
-      return ' Política de assinatura ICP-Brasil tipificada não declarada no pacote assinado.';
     }
 
     function evaluateMetadata(details, basic, pdfInfo, pngInfo) {
@@ -2245,18 +2020,6 @@
       els.statusTitle.textContent = totals.label;
       els.statusText.textContent = statusMessage(totals);
 
-      const blockSummaries = buildBlockSummaries(details);
-      if (els.blockSummary) {
-        els.blockSummary.innerHTML = blockSummaries.map(item => `
-          <article class="block-card">
-            <div class="block-card-title">${escapeHtml(item.title)}</div>
-            <span class="tag ${item.status}">${labelForStatus(item.status)}</span>
-            <div class="block-card-result">${escapeHtml(item.result)}</div>
-            <div class="block-card-text">${escapeHtml(item.text)}</div>
-          </article>
-        `).join('');
-      }
-
       els.resultsBody.innerHTML = details.map(item => `
         <tr>
           <td>${escapeHtml(item.req)}</td>
@@ -2265,76 +2028,7 @@
         </tr>
       `).join('');
 
-      lastReportText = buildTextReport({ basic, rule, details, totals, hash, blockSummaries });
-    }
-
-
-    function buildBlockSummaries(details) {
-      const formatItem = details.find(item => item.req === 'Formato PDF/A' || item.req === 'Formato exigido');
-      const signatureItem = details.find(item => item.req === 'Assinatura digital ICP-Brasil');
-      const natureItem = details.find(item => item.req === 'Natureza técnica do PDF');
-      const resolutionItem = details.find(item => item.req.startsWith('Resolução mínima'));
-      const colorItem = details.find(item => item.req.startsWith('Cor esperada'));
-      const metadataItem = details.find(item => item.req === 'Resumo dos metadados do Anexo II');
-      const hashItem = details.find(item => item.req === 'Hash SHA-256 do arquivo analisado');
-      const physicalItem = details.find(item => item.req === 'Conferência com o documento físico original');
-
-      const imageStatus = worstStatus([natureItem?.status, resolutionItem?.status, colorItem?.status]);
-      const integrityStatus = worstStatus([hashItem?.status, physicalItem?.status]);
-
-      return [
-        {
-          title: 'Formato e PDF/A',
-          status: formatItem?.status || 'neutral',
-          result: cleanSummaryResult(formatItem?.result || 'Não avaliado'),
-          text: formatItem?.status === 'ok'
-            ? 'O formato técnico principal do arquivo foi validado conforme o item analisado.'
-            : 'Verifique a geração do arquivo e a conformidade PDF/A quando o tipo documental exigir esse padrão.'
-        },
-        {
-          title: 'Assinatura digital',
-          status: signatureItem?.status || 'neutral',
-          result: cleanSummaryResult(signatureItem?.result || 'Não avaliada'),
-          text: signatureItem?.status === 'ok'
-            ? 'A assinatura foi tratada em bloco próprio, com cadeia ICP-Brasil, revogação e classificação técnica quando disponíveis.'
-            : 'A assinatura exige validação técnica específica ou nova conferência conforme o resultado detalhado.'
-        },
-        {
-          title: 'Digitalização e imagem',
-          status: imageStatus,
-          result: cleanSummaryResult(resolutionItem?.result || natureItem?.result || 'Não avaliada'),
-          text: [natureItem?.result, resolutionItem?.result, colorItem?.result]
-            .filter(Boolean)
-            .map(cleanSummaryResult)
-            .join(' | ') || 'Sem elementos suficientes para síntese de imagem.'
-        },
-        {
-          title: 'Metadados do Anexo II',
-          status: metadataItem?.status || 'neutral',
-          result: cleanSummaryResult(metadataItem?.result || 'Não avaliados'),
-          text: metadataItem?.status === 'ok'
-            ? 'Os metadados obrigatórios foram localizados nos campos legíveis do arquivo analisado.'
-            : 'Os metadados ausentes devem ser incluídos no arquivo ou comprovados por sistema de gestão documental.'
-        },
-        {
-          title: 'Hash e conferência material',
-          status: integrityStatus,
-          result: 'Hash calculado e conferência física não automatizada',
-          text: 'O hash identifica o arquivo analisado. A correspondência integral com o original físico depende de conferência externa.'
-        }
-      ];
-    }
-
-    function worstStatus(statuses) {
-      const values = statuses.filter(Boolean);
-      if (values.includes('fail')) return 'fail';
-      if (values.includes('warn')) return 'warn';
-      if (values.includes('ok')) return 'ok';
-      return 'neutral';
-    }
-
-    function cleanSummaryResult(value) {
-      return stripHtml(String(value || '')).replace(/\s+/g, ' ').trim();
+      lastReportText = buildTextReport({ basic, rule, details, totals, hash });
     }
 
     function statusMessage(totals) {
@@ -2350,7 +2044,7 @@
       return 'Informativo';
     }
 
-    function buildTextReport({ basic, rule, details, totals, hash, blockSummaries = [] }) {
+    function buildTextReport({ basic, rule, details, totals, hash }) {
       const lines = [];
       lines.push('RELATÓRIO TÉCNICO PRELIMINAR');
       lines.push('Decreto nº 10.278/2020');
@@ -2365,14 +2059,6 @@
       lines.push(`Identificador opcional: ${els.identifier.value || 'não informado'}`);
       lines.push(`Hash SHA-256: ${hash}`);
       lines.push('');
-      if (blockSummaries.length) {
-        lines.push('SÍNTESE POR BLOCOS');
-        blockSummaries.forEach(item => {
-          lines.push(`- ${item.title}: ${labelForStatus(item.status)} - ${item.result}`);
-          lines.push(`  ${item.text}`);
-        });
-        lines.push('');
-      }
       lines.push('ITENS ANALISADOS');
       details.forEach((item, index) => {
         const cleanResult = stripHtml(item.result);
