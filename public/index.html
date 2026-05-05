@@ -1681,18 +1681,9 @@
             ? ` Cadeia validada: ${signatureValidation.chainPath.join(' > ')}.`
             : '';
 
-          const crlInfo = signatureValidation.revocationChecked === true
-            ? ` Consulta de revogação realizada por ${signatureValidation.revocationMethod || 'método informado pelo validador'}${signatureValidation.revoked === false ? ', sem identificação de revogação' : ''}${signatureValidation.crlThisUpdate ? `. LCR emitida em ${signatureValidation.crlThisUpdate}` : ''}${signatureValidation.crlNextUpdate ? `, com próxima atualização em ${signatureValidation.crlNextUpdate}` : ''}.`
-            : '';
-
-          const timestampInfo = signatureValidation.timestampPresent === true
-            ? ` Carimbo do tempo localizado${signatureValidation.timestampValid === true ? ' e validado' : ''}${signatureValidation.timestampTime ? ` em ${signatureValidation.timestampTime}` : ''}.`
-            : ' Não foi localizado carimbo do tempo documental.';
-
-          const policyInfo = signatureValidation.policyOid
-            ? ` Política de assinatura identificada: ${signatureValidation.policyName || signatureValidation.policyOid}.`
-            : ' Política de assinatura ICP-Brasil tipificada não declarada no pacote assinado.';
-
+          const revocationInfo = formatSignatureRevocationInfo(signatureValidation);
+          const timestampInfo = formatSignatureTimestampInfo(signatureValidation);
+          const policyInfo = formatSignaturePolicyInfo(signatureValidation);
           const standard = signatureValidation.standard ? ` Classificação técnica: ${signatureValidation.standard}.` : '';
           const level = signatureValidation.validationLevel ? ` Nível técnico: ${signatureValidation.validationLevel}.` : '';
           const signers = Array.isArray(signatureValidation.signatures) && signatureValidation.signatures.length
@@ -1721,10 +1712,19 @@
               (assinaturaComCadeiaRevogacao && documentoFinalAceitavel);
 
             if (assinaturaConforme) {
-              const dss =
+              const hasDss =
                 resultado === 'valid_icp_brasil_chain_crl_with_permitted_incremental_update' ||
                 signatureValidation.postSignatureUpdateType === 'dss_lt_upgrade_no_tsa' ||
                 String(signatureValidation.standard || '').toLowerCase().includes('dss');
+
+              const hasTimestamp = signatureValidation.timestampPresent === true && signatureValidation.timestampValid === true;
+              const classification = hasTimestamp && hasDss
+                ? 'Conforme, com classificação técnica PAdES-T com DSS'
+                : hasTimestamp
+                  ? 'Conforme, com classificação técnica PAdES-T'
+                  : hasDss
+                    ? 'Conforme, com classificação técnica PAdES-B com DSS'
+                    : 'Conforme';
 
               const incrementalInfo = signatureValidation.postSignatureUpdateAccepted === true
                 ? ` O PDF contém atualização incremental posterior classificada como técnica permitida: ${signatureValidation.postSignatureUpdateType || 'tipo não informado'}.${signatureValidation.postSignatureUpdateMessage ? ` ${signatureValidation.postSignatureUpdateMessage}` : ''}`
@@ -1733,8 +1733,8 @@
               details.push({
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'ok',
-                result: dss ? 'Conforme, com classificação técnica PAdES-B com DSS' : 'Conforme',
-                guidance: `${signatureValidation.message || 'Assinatura digital validada.'}${standard}${level}${signers}${chainPath}${crlInfo}${incrementalInfo}${timestampInfo} ${policyInfo}${warnings}`
+                result: classification,
+                guidance: `${signatureValidation.message || 'Assinatura digital validada.'}${standard}${level}${signers}${chainPath}${revocationInfo}${incrementalInfo}${timestampInfo} ${policyInfo}${warnings}`
               });
               return;
             }
@@ -1744,7 +1744,7 @@
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'fail',
                 result: 'Certificado revogado',
-                guidance: `${signatureValidation.message || 'O certificado do assinante consta como revogado na fonte consultada.'}${standard}${level}${signers}${chainPath}${crlInfo}${warnings}`
+                guidance: `${signatureValidation.message || 'O certificado do assinante consta como revogado na fonte consultada.'}${standard}${level}${signers}${chainPath}${revocationInfo}${warnings}`
               });
               return;
             }
@@ -1764,7 +1764,7 @@
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'warn',
                 result: 'Assinatura válida na revisão assinada, mas PDF final não aceito automaticamente',
-                guidance: `${signatureValidation.message || 'A assinatura foi validada sobre a revisão assinada, mas o PDF final contém atualização posterior não classificada como técnica permitida.'}${standard}${level}${signers}${chainPath}${crlInfo}${signatureValidation.postSignatureUpdateMessage ? ` ${signatureValidation.postSignatureUpdateMessage}` : ''}${warnings}`
+                guidance: `${signatureValidation.message || 'A assinatura foi validada sobre a revisão assinada, mas o PDF final contém atualização posterior não classificada como técnica permitida.'}${standard}${level}${signers}${chainPath}${revocationInfo}${signatureValidation.postSignatureUpdateMessage ? ` ${signatureValidation.postSignatureUpdateMessage}` : ''}${warnings}`
               });
               return;
             }
@@ -1794,7 +1794,7 @@
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'warn',
                 result: 'Assinatura ICP-Brasil validada parcialmente',
-                guidance: `${signatureValidation.message || 'Assinatura digital validada, mas ainda há critérios técnicos não concluídos para aceitação automática.'}${standard}${level}${signers}${chainPath}${crlInfo}${timestampInfo} ${policyInfo}${warnings}`
+                guidance: `${signatureValidation.message || 'Assinatura digital validada, mas ainda há critérios técnicos não concluídos para aceitação automática.'}${standard}${level}${signers}${chainPath}${revocationInfo}${timestampInfo} ${policyInfo}${warnings}`
               });
               return;
             }
@@ -1861,6 +1861,60 @@
         result: 'Arquivo não reconhecido',
         guidance: 'Não foi possível procurar assinatura digital em arquivo não reconhecido.'
       });
+    }
+
+    function formatSignatureRevocationInfo(signatureValidation) {
+      if (signatureValidation?.revocationChecked !== true) {
+        return '';
+      }
+
+      const method = String(signatureValidation.revocationMethod || '').toUpperCase();
+
+      if (signatureValidation.revoked === true) {
+        const date = signatureValidation.revocationDate ? ` em ${signatureValidation.revocationDate}` : '';
+        const reason = signatureValidation.revocationReason ? ` Motivo: ${signatureValidation.revocationReason}.` : '';
+        return ` Consulta de revogação realizada por ${method || 'método informado pelo validador'}. O certificado consta como revogado${date}.${reason}`;
+      }
+
+      if (method === 'OCSP') {
+        const status = signatureValidation.ocspStatus ? ` Status OCSP: ${signatureValidation.ocspStatus}.` : '';
+        const producedAt = signatureValidation.ocspProducedAt ? ` Resposta produzida em ${signatureValidation.ocspProducedAt}.` : '';
+        const thisUpdate = signatureValidation.ocspThisUpdate ? ` Atualização informada em ${signatureValidation.ocspThisUpdate}.` : '';
+        const nextUpdate = signatureValidation.ocspNextUpdate ? ` Próxima atualização em ${signatureValidation.ocspNextUpdate}.` : '';
+        return ` Consulta de revogação realizada por OCSP, sem identificação de revogação.${status}${producedAt}${thisUpdate}${nextUpdate}`;
+      }
+
+      if (method === 'CRL' || method === 'LCR') {
+        const thisUpdate = signatureValidation.crlThisUpdate ? ` LCR emitida em ${signatureValidation.crlThisUpdate}` : '';
+        const nextUpdate = signatureValidation.crlNextUpdate ? `, com próxima atualização em ${signatureValidation.crlNextUpdate}` : '';
+        const issuer = signatureValidation.crlIssuer ? ` Emissor da LCR: ${signatureValidation.crlIssuer}.` : '';
+        return ` Consulta de revogação realizada por LCR, sem identificação de revogação.${thisUpdate}${nextUpdate}.${issuer}`;
+      }
+
+      return ` Consulta de revogação realizada por ${signatureValidation.revocationMethod || 'método informado pelo validador'}, sem identificação de revogação.`;
+    }
+
+    function formatSignatureTimestampInfo(signatureValidation) {
+      if (signatureValidation?.timestampPresent === true) {
+        const valid = signatureValidation.timestampValid === true ? ' e validado' : '';
+        const time = signatureValidation.timestampTime ? ` em ${signatureValidation.timestampTime}` : '';
+        const authority = signatureValidation.timestampAuthority ? ` Autoridade de carimbo do tempo: ${signatureValidation.timestampAuthority}.` : '';
+        return ` Carimbo do tempo localizado${valid}${time}.${authority}`;
+      }
+
+      return ' Não foi localizado carimbo do tempo documental. A classificação permanece como PAdES-B com DSS, sem conclusão como PAdES-LT.';
+    }
+
+    function formatSignaturePolicyInfo(signatureValidation) {
+      if (signatureValidation?.policyDeclared === true && signatureValidation?.policyRecognized === true) {
+        return ` Política de assinatura ICP-Brasil declarada: ${signatureValidation.policyName || signatureValidation.policyOid}.`;
+      }
+
+      if (signatureValidation?.policyDeclared === true) {
+        return ` Política de assinatura declarada no pacote assinado, mas não reconhecida como política ICP-Brasil tipificada pela ferramenta: ${signatureValidation.policyOid || 'OID não informado'}.`;
+      }
+
+      return ' Política de assinatura ICP-Brasil tipificada não declarada no pacote assinado.';
     }
 
     function evaluateMetadata(details, basic, pdfInfo, pngInfo) {
