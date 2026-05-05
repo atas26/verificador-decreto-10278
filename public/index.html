@@ -580,6 +580,11 @@
       font-weight: 800;
     }
 
+    .signature-validity-expired {
+      color: rgb(232, 57, 70);
+      font-weight: 800;
+    }
+
     .signature-validity-bad {
       color: var(--red);
       font-weight: 800;
@@ -619,6 +624,33 @@
 
     .legal-box p { margin: 0 0 10px; }
     .legal-box p:last-child { margin-bottom: 0; }
+
+    .beta-limitations {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fbfcff;
+      color: #344054;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .beta-limitations-title {
+      font-weight: 800;
+      color: var(--ink);
+      margin-bottom: 8px;
+      letter-spacing: .01em;
+    }
+
+    .beta-limitations ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .beta-limitations li + li {
+      margin-top: 4px;
+    }
 
     .footer {
       margin-top: 22px;
@@ -766,6 +798,16 @@
             <button id="downloadBtn" class="btn-secondary" type="button">Baixar relatório TXT</button>
             <button id="newAnalysisBtn" class="btn-primary" type="button">Nova análise</button>
           </div>
+
+          <div class="beta-limitations" aria-label="Limitações da versão beta">
+            <div class="beta-limitations-title">Limitações da versão beta</div>
+            <ul>
+              <li>A ferramenta faz conferência automatizada do arquivo enviado e não substitui qualificação notarial, registral ou análise jurídica do título.</li>
+              <li>A conformidade PDF/A é verificada tecnicamente pelo veraPDF, mas a adequação do documento ao caso concreto depende da finalidade de uso.</li>
+              <li>A assinatura digital é verificada por serviço técnico próprio, com análise do padrão PAdES, cadeia ICP-Brasil, revogação por OCSP ou LCR, DSS e carimbo do tempo quando disponível.</li>
+              <li>A correspondência integral com o original físico, a autoria material e a suficiência dos metadados podem depender de conferência externa ou sistema de gestão documental.</li>
+            </ul>
+          </div>
         </div>
       </section>
     </main>
@@ -852,6 +894,7 @@
       purpose: document.getElementById('purpose'),
       emptyState: document.getElementById('emptyState'),
       report: document.getElementById('report'),
+      reportPanel: document.getElementById('reportPanel'),
       statusBanner: document.getElementById('statusBanner'),
       statusTitle: document.getElementById('statusTitle'),
       statusText: document.getElementById('statusText'),
@@ -901,7 +944,12 @@
     if (els.newAnalysisBtn) {
       els.newAnalysisBtn.addEventListener('click', () => {
         clearAll();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const uploadPanel = document.querySelector('.upload-panel');
+        if (uploadPanel) {
+          uploadPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
       });
     }
 
@@ -943,6 +991,9 @@
       els.analyzeBtn.classList.add('btn-loading');
       els.analyzeBtn.innerHTML = '<span class="button-spinner" aria-hidden="true"></span><span>Analisando</span><span class="loading-dots" aria-hidden="true"></span>';
       els.analyzeBtn.setAttribute('aria-busy', 'true');
+      if (els.reportPanel) {
+        setTimeout(() => els.reportPanel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+      }
 
       try {
         const buffer = await selectedFile.arrayBuffer();
@@ -2075,7 +2126,7 @@
       let certificateStatusAtValidationClass = 'signature-validity-warning';
       if (hasComparableValidationDate && validationDate > notAfter) {
         certificateStatusAtValidationText = 'Certificado expirado na data da validação.';
-        certificateStatusAtValidationClass = 'signature-validity-warning';
+        certificateStatusAtValidationClass = 'signature-validity-expired';
       } else if (hasComparableValidationDate && validationDate < notBefore) {
         certificateStatusAtValidationText = 'Certificado ainda não vigente na data da validação.';
         certificateStatusAtValidationClass = 'signature-validity-bad';
@@ -2276,7 +2327,7 @@
               req: 'Assinatura digital ICP-Brasil',
               status: 'warn',
               result: 'Assinatura digital detectada, mas validação conclusiva não obtida',
-              guidance: `${signatureValidation.message || 'O microserviço detectou assinatura embutida, mas não concluiu a validação técnica necessária.'}${standard}${level}${signatureContext}${signers}${warnings}`,
+              guidance: `${signatureValidation.message || 'O serviço técnico detectou assinatura embutida, mas não concluiu a validação técnica necessária.'}${standard}${level}${signatureContext}${signers}${warnings}`,
               signaturePresentation
             });
             return;
@@ -2285,7 +2336,7 @@
           details.push({
             req: 'Assinatura digital ICP-Brasil',
             status: 'fail',
-            result: 'Assinatura digital não localizada pelo microserviço',
+            result: 'Assinatura digital não localizada pelo serviço técnico',
             guidance: signatureValidation.message || 'Não foi localizada assinatura digital PAdES embutida no PDF analisado. Para uso perante pessoa jurídica de direito público ou sem acordo prévio entre particulares, recomenda-se assinatura digital no padrão ICP-Brasil.'
           });
           return;
@@ -2569,7 +2620,25 @@
         </tr>
       `).join('');
 
+      highlightExpiredCertificateText(els.report);
       lastReportText = buildTextReport({ basic, rule, details, totals, hash, blockSummaries });
+    }
+
+    function highlightExpiredCertificateText(root) {
+      const scope = root || document.body;
+      const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+      const targets = [];
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        if (node.nodeValue && node.nodeValue.includes('Certificado expirado na data da validação.')) {
+          targets.push(node);
+        }
+      }
+      targets.forEach(node => {
+        const parent = node.parentElement;
+        if (!parent || parent.classList.contains('signature-validity-expired')) return;
+        parent.classList.add('signature-validity-expired');
+      });
     }
 
 
@@ -2684,6 +2753,12 @@
         lines.push(`   Resultado: ${labelForStatus(item.status)} - ${cleanResult}`);
         lines.push(`   Orientação: ${item.guidance}`);
       });
+      lines.push('');
+      lines.push('LIMITAÇÕES DA VERSÃO BETA');
+      lines.push('- A ferramenta faz conferência automatizada do arquivo enviado e não substitui qualificação notarial, registral ou análise jurídica do título.');
+      lines.push('- A conformidade PDF/A é verificada tecnicamente pelo veraPDF, mas a adequação do documento ao caso concreto depende da finalidade de uso.');
+      lines.push('- A assinatura digital é verificada por serviço técnico próprio, com análise do padrão PAdES, cadeia ICP-Brasil, revogação por OCSP ou LCR, DSS e carimbo do tempo quando disponível.');
+      lines.push('- A correspondência integral com o original físico, a autoria material e a suficiência dos metadados podem depender de conferência externa ou sistema de gestão documental.');
       lines.push('');
       lines.push('Observação: relatório automatizado e preliminar. Não substitui a qualificação notarial e registral nem os demais procedimentos de análise do documento eletrônico.');
       return lines.join('\n');
