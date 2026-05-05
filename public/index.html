@@ -2211,7 +2211,8 @@
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'fail',
                 result: 'Certificado revogado',
-                guidance: `${signatureValidation.message || 'O certificado do assinante consta como revogado na fonte consultada.'}${standard}${level}${signatureContext}${signers}${chainPath}${revocationInfo}${warnings}`
+                guidance: `${signatureValidation.message || 'O certificado do assinante consta como revogado na fonte consultada.'}${standard}${level}${signatureContext}${signers}${chainPath}${revocationInfo}${warnings}`,
+                signaturePresentation
               });
               return;
             }
@@ -2221,7 +2222,8 @@
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'fail',
                 result: 'Assinatura digital inválida ou com integridade não confirmada',
-                guidance: `${signatureValidation.message || 'A assinatura foi detectada, mas a validação técnica indicou erro, restrição ou falha de integridade.'}${standard}${level}${signatureContext}${signers}${warnings}`
+                guidance: `${signatureValidation.message || 'A assinatura foi detectada, mas a validação técnica indicou erro, restrição ou falha de integridade.'}${standard}${level}${signatureContext}${signers}${warnings}`,
+                signaturePresentation
               });
               return;
             }
@@ -2231,7 +2233,8 @@
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'warn',
                 result: 'Assinatura válida na revisão assinada, mas PDF final não aceito automaticamente',
-                guidance: `${signatureValidation.message || 'A assinatura foi validada sobre a revisão assinada, mas o PDF final contém atualização posterior não classificada como técnica permitida.'}${standard}${level}${signatureContext}${signers}${chainPath}${revocationInfo}${signatureValidation.postSignatureUpdateMessage ? ` ${signatureValidation.postSignatureUpdateMessage}` : ''}${warnings}`
+                guidance: `${signatureValidation.message || 'A assinatura foi validada sobre a revisão assinada, mas o PDF final contém atualização posterior não classificada como técnica permitida.'}${standard}${level}${signatureContext}${signers}${chainPath}${revocationInfo}${signatureValidation.postSignatureUpdateMessage ? ` ${signatureValidation.postSignatureUpdateMessage}` : ''}${warnings}`,
+                signaturePresentation
               });
               return;
             }
@@ -2241,7 +2244,8 @@
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'warn',
                 result: 'Assinatura validada, mas cadeia ICP-Brasil não concluída',
-                guidance: `${signatureValidation.message || 'A assinatura foi validada, mas a cadeia de certificação não foi concluída até âncora confiável da ICP-Brasil.'}${standard}${level}${signatureContext}${signers}${warnings}`
+                guidance: `${signatureValidation.message || 'A assinatura foi validada, mas a cadeia de certificação não foi concluída até âncora confiável da ICP-Brasil.'}${standard}${level}${signatureContext}${signers}${warnings}`,
+                signaturePresentation
               });
               return;
             }
@@ -2251,7 +2255,8 @@
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'warn',
                 result: 'Assinatura validada, mas revogação não consultada',
-                guidance: `${signatureValidation.message || 'A assinatura e o certificado foram validados, mas a consulta de revogação por LCR ou OCSP não foi concluída.'}${standard}${level}${signatureContext}${signers}${chainPath}${warnings}`
+                guidance: `${signatureValidation.message || 'A assinatura e o certificado foram validados, mas a consulta de revogação por LCR ou OCSP não foi concluída.'}${standard}${level}${signatureContext}${signers}${chainPath}${warnings}`,
+                signaturePresentation
               });
               return;
             }
@@ -2261,7 +2266,8 @@
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'warn',
                 result: 'Assinatura ICP-Brasil validada parcialmente',
-                guidance: `${signatureValidation.message || 'Assinatura digital validada, mas ainda há critérios técnicos não concluídos para aceitação automática.'}${standard}${level}${signatureContext}${signers}${chainPath}${revocationInfo}${timestampInfo}${policyInfo}${warnings}`
+                guidance: `${signatureValidation.message || 'Assinatura digital validada, mas ainda há critérios técnicos não concluídos para aceitação automática.'}${standard}${level}${signatureContext}${signers}${chainPath}${revocationInfo}${timestampInfo}${policyInfo}${warnings}`,
+                signaturePresentation
               });
               return;
             }
@@ -2270,7 +2276,8 @@
               req: 'Assinatura digital ICP-Brasil',
               status: 'warn',
               result: 'Assinatura digital detectada, mas validação conclusiva não obtida',
-              guidance: `${signatureValidation.message || 'O microserviço detectou assinatura embutida, mas não concluiu a validação técnica necessária.'}${standard}${level}${signatureContext}${signers}${warnings}`
+              guidance: `${signatureValidation.message || 'O microserviço detectou assinatura embutida, mas não concluiu a validação técnica necessária.'}${standard}${level}${signatureContext}${signers}${warnings}`,
+              signaturePresentation
             });
             return;
           }
