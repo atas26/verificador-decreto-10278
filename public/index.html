@@ -1719,20 +1719,18 @@
 
               const hasTimestamp = signatureValidation.timestampPresent === true && signatureValidation.timestampValid === true;
               const classification = hasTimestamp && hasDss
-                ? 'Conforme, com classificação técnica PAdES-T com DSS'
+                ? 'Classificação técnica PAdES-T com DSS'
                 : hasTimestamp
-                  ? 'Conforme, com classificação técnica PAdES-T'
+                  ? 'Classificação técnica PAdES-T'
                   : hasDss
-                    ? 'Conforme, com classificação técnica PAdES-B com DSS'
-                    : 'Conforme';
+                    ? 'Classificação técnica PAdES-B com DSS'
+                    : 'Assinatura digital ICP-Brasil validada';
 
-              const incrementalInfo = signatureValidation.postSignatureUpdateAccepted === true
-                ? ` O PDF contém atualização incremental posterior classificada como técnica permitida: ${signatureValidation.postSignatureUpdateType || 'tipo não informado'}.${signatureValidation.postSignatureUpdateMessage ? ` ${signatureValidation.postSignatureUpdateMessage}` : ''}`
+              const dssInfo = hasDss
+                ? ' O PDF contém atualização incremental posterior classificada como inclusão técnica de DSS/VRI, certificados e LCRs.'
                 : '';
 
-              const guidanceOk = hasDss
-                ? `Assinatura PAdES-B validada. O certificado do assinante foi identificado como certificado ICP-Brasil. A cadeia de certificação foi validada até a AC-Raiz da ICP-Brasil.${revocationInfo} O PDF contém atualização incremental posterior classificada como inclusão técnica de DSS/VRI, certificados e LCRs.${timestampInfo} ${policyInfo}${standard}${level}${signers}${warnings}`
-                : `Assinatura digital validada. O certificado do assinante foi identificado como certificado ICP-Brasil. A cadeia de certificação foi validada até a AC-Raiz da ICP-Brasil.${revocationInfo}${timestampInfo} ${policyInfo}${standard}${level}${signers}${warnings}`;
+              const guidanceOk = `Assinatura PAdES-B validada. O certificado do assinante foi identificado como certificado ICP-Brasil. A cadeia de certificação foi validada até a AC-Raiz da ICP-Brasil.${revocationInfo}${dssInfo}${timestampInfo} ${policyInfo}${signers}`;
 
               details.push({
                 req: 'Assinatura digital ICP-Brasil',
