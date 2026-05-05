@@ -569,9 +569,25 @@
     .signature-extra div { overflow-wrap: anywhere; }
     .signature-extra strong { color: #172033; }
 
-    .signature-validity-good {
+    .signature-validity-good,
+    .signature-validity-info {
       color: var(--blue);
       font-weight: 800;
+    }
+
+    .signature-validity-warning {
+      color: var(--amber);
+      font-weight: 800;
+    }
+
+    .signature-validity-bad {
+      color: var(--red);
+      font-weight: 800;
+    }
+
+    .signature-time-note {
+      color: #667085;
+      font-weight: 700;
     }
 
     .hash {
@@ -2023,14 +2039,54 @@
       const signDate = firstSignature?.signDate ? new Date(firstSignature.signDate) : null;
       const notBefore = firstSignature?.certificateNotBefore ? new Date(firstSignature.certificateNotBefore) : null;
       const notAfter = firstSignature?.certificateNotAfter ? new Date(firstSignature.certificateNotAfter) : null;
-      const signedWithinCertificateValidity = Boolean(
+      const validationDate = new Date();
+
+      const hasComparableSignatureDate = Boolean(
         signDate && notBefore && notAfter &&
         !Number.isNaN(signDate.getTime()) &&
         !Number.isNaN(notBefore.getTime()) &&
-        !Number.isNaN(notAfter.getTime()) &&
+        !Number.isNaN(notAfter.getTime())
+      );
+
+      const signedWithinCertificateValidity = Boolean(
+        hasComparableSignatureDate &&
         signDate >= notBefore &&
         signDate <= notAfter
       );
+
+      let signatureValidityStatusText = 'Não foi possível comparar a data da assinatura com a vigência do certificado.';
+      let signatureValidityStatusClass = 'signature-validity-warning';
+      if (hasComparableSignatureDate && signedWithinCertificateValidity) {
+        signatureValidityStatusText = 'Assinado dentro do período de validade do certificado, conforme data extraída da assinatura.';
+        signatureValidityStatusClass = 'signature-validity-good';
+      } else if (hasComparableSignatureDate) {
+        signatureValidityStatusText = 'Data da assinatura fora do período de validade do certificado.';
+        signatureValidityStatusClass = 'signature-validity-bad';
+      }
+
+      const hasComparableValidationDate = Boolean(
+        notBefore && notAfter &&
+        !Number.isNaN(notBefore.getTime()) &&
+        !Number.isNaN(notAfter.getTime()) &&
+        !Number.isNaN(validationDate.getTime())
+      );
+
+      let certificateStatusAtValidationText = 'Situação do certificado na data da validação: não verificável.';
+      let certificateStatusAtValidationClass = 'signature-validity-warning';
+      if (hasComparableValidationDate && validationDate > notAfter) {
+        certificateStatusAtValidationText = 'Certificado expirado na data da validação.';
+        certificateStatusAtValidationClass = 'signature-validity-warning';
+      } else if (hasComparableValidationDate && validationDate < notBefore) {
+        certificateStatusAtValidationText = 'Certificado ainda não vigente na data da validação.';
+        certificateStatusAtValidationClass = 'signature-validity-bad';
+      } else if (hasComparableValidationDate) {
+        certificateStatusAtValidationText = 'Certificado vigente na data da validação.';
+        certificateStatusAtValidationClass = 'signature-validity-info';
+      }
+
+      const timestampNote = signatureValidation?.timestampPresent === true && signatureValidation?.timestampValid === true
+        ? 'Carimbo do tempo documental localizado e validado.'
+        : 'Sem carimbo do tempo documental identificado.';
 
       return {
         arquivo: basic?.name || selectedFile?.name || 'Não localizado',
@@ -2038,14 +2094,19 @@
         assinanteCpf: formatCpfMasked(extracted.cpf),
         certificadoVigencia: certificateValidity,
         dataAssinatura: formatDateTimeBR(firstSignature?.signDate),
-        signedWithinCertificateValidity
+        dataValidacao: formatDateTimeBR(validationDate.toISOString()),
+        signedWithinCertificateValidity,
+        signatureValidityStatusText,
+        signatureValidityStatusClass,
+        certificateStatusAtValidationText,
+        certificateStatusAtValidationClass,
+        timestampNote
       };
     }
 
     function signaturePresentationText(data) {
       if (!data) return '';
-      const validityText = data.signedWithinCertificateValidity ? ' Assinado no período de validade do certificado.' : '';
-      return ` Arquivo: ${data.arquivo}. Assinante: ${data.assinanteNome}. CPF: ${data.assinanteCpf}. Vigência do certificado: ${data.certificadoVigencia}. Documento assinado em: ${data.dataAssinatura}.${validityText}`;
+      return ` Arquivo: ${data.arquivo}. Assinante: ${data.assinanteNome}. CPF: ${data.assinanteCpf}. Vigência do certificado: ${data.certificadoVigencia}. Documento assinado em: ${data.dataAssinatura}. ${data.signatureValidityStatusText} Data da validação: ${data.dataValidacao}. ${data.certificateStatusAtValidationText} ${data.timestampNote}`;
     }
 
     function signaturePresentationHtml(data) {
@@ -2057,7 +2118,10 @@
           <div><strong>CPF:</strong> ${escapeHtml(data.assinanteCpf)}</div>
           <div><strong>Vigência do certificado:</strong> ${escapeHtml(data.certificadoVigencia)}</div>
           <div><strong>Documento assinado em:</strong> ${escapeHtml(data.dataAssinatura)}</div>
-          ${data.signedWithinCertificateValidity ? '<div class="signature-validity-good">Assinado no período de validade do certificado</div>' : ''}
+          <div class="${escapeHtml(data.signatureValidityStatusClass)}">${escapeHtml(data.signatureValidityStatusText)}</div>
+          <div><strong>Data da validação:</strong> ${escapeHtml(data.dataValidacao)}</div>
+          <div class="${escapeHtml(data.certificateStatusAtValidationClass)}">${escapeHtml(data.certificateStatusAtValidationText)}</div>
+          <div class="signature-time-note">${escapeHtml(data.timestampNote)}</div>
         </div>
       `;
     }
