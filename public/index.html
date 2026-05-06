@@ -746,7 +746,7 @@
       <div class="card hero-main">
         <div class="eyebrow">Versão beta</div>
         <h1>Triagem e validação de documentos eletrônicos.</h1>
-        <p class="lead">Envie um PDF, escolha o perfil de análise e verifique formato, hash, conformidade PDF/A, assinatura digital ICP-Brasil e, quando aplicável, digitalização, imagem e metadados dos Anexos I e II.</p>
+        <p class="lead">Envie um PDF, escolha o perfil de análise e verifique formato, hash, conformidade PDF/A, assinatura digital ICP-Brasil e, quando aplicável, digitalização, imagem e metadados dos Anexos I e II, do Decreto nº 10.278/2020.</p>
         <div class="notice">O resultado é uma conferência automatizada do arquivo. Não substitui a qualificação notarial e registral nem os demais procedimentos de análise do documento eletrônico.</div>
       </div>
 
@@ -759,8 +759,8 @@
             <li><span class="dot"></span><span>Validação PDF/A.</span></li>
             <li><span class="dot"></span><span>Detecção técnica de assinatura digital embutida em PDF.</span></li>
             <li><span class="dot"></span><span>Checagem da assinatura digital ICP-Brasil.</span></li>
-            <li><span class="dot"></span><span>Registro de Imóveis: inclui PDF/PDF-A, assinatura digital ICP-Brasil, digitalização e imagem e metadados dos Anexos I e II.</span></li>
-            <li><span class="dot"></span><span>Tabelionato de Notas: inclui PDF/PDF-A e assinatura digital ICP-Brasil, sem digitalização, imagem e metadados dos Anexos I e II na contagem principal.</span></li>
+            <li><span class="dot"></span><span>Documentos destinados aos Registros de Imóveis: inclui PDF-A, assinatura digital ICP-Brasil, digitalização, imagem e metadados dos Anexos I e II.</span></li>
+            <li><span class="dot"></span><span>Documentos emitidos pelos Tabelionatos de Notas e Registros de Imóveis: inclui PDF/A e assinatura digital ICP-Brasil do delegatário, substituto ou preposto.</span></li>
           </ul>
         </div>
       </aside>
@@ -772,8 +772,8 @@
           <div class="field">
             <label for="purpose">Perfil de análise</label>
             <select id="purpose">
-              <option value="registro_imoveis">Registro de Imóveis</option>
-              <option value="tabelionato_notas">Tabelionato de Notas</option>
+              <option value="registro_imoveis">Documentos destinados aos Registros de Imóveis</option>
+              <option value="tabelionato_notas">Documentos emitidos pelos Tabelionatos de Notas e Registros de Imóveis</option>
             </select>
           </div>
         </div>
@@ -854,14 +854,14 @@
           </div>
 
           <div class="beta-limitations" aria-label="Limitações da versão beta">
-            <div class="beta-limitations-title"><strong>Limitações da versão beta</strong></div>
+            <div class="beta-limitations-title">Limitações da versão beta</div>
             <ul>
               <li>A ferramenta faz conferência automatizada do arquivo enviado e não substitui qualificação notarial, registral ou análise jurídica do título.</li>
-              <li><strong>LGPD e retenção.</strong> A ferramenta limita o tratamento aos dados técnicos necessários à conferência automatizada. O arquivo não é salvo, não fica armazenado e não há extração do conteúdo material do documento analisado para base de dados.</li>
               <li>A conformidade PDF/A é verificada tecnicamente pelo veraPDF, mas a adequação do documento ao caso concreto depende da finalidade de uso.</li>
               <li>A assinatura digital é verificada por serviço técnico próprio, com análise do padrão PAdES, cadeia ICP-Brasil, revogação por OCSP ou LCR, DSS e carimbo do tempo quando disponível.</li>
-              <li><strong>Legitimidade do assinante.</strong> A checagem confirma elementos técnicos da assinatura digital, mas não analisa se o assinante tinha poderes, representação, autorização ou legitimidade para assinar o documento.</li>
               <li>A correspondência integral com o original físico, a autoria material e a suficiência dos metadados podem depender de conferência externa ou sistema de gestão documental.</li>
+              <li><strong>LGPD e retenção.</strong> A ferramenta limita o tratamento aos dados técnicos necessários à conferência automatizada. O arquivo não é salvo, não fica armazenado e não há extração do conteúdo material do documento analisado para base de dados.</li>
+              <li><strong>Legitimidade do assinante.</strong> A checagem confirma elementos técnicos da assinatura digital, mas não analisa se o assinante tinha poderes, representação, autorização ou legitimidade para assinar o documento.</li>
             </ul>
           </div>
         </div>
@@ -943,22 +943,22 @@
     const analysisProfiles = {
       registro_imoveis: {
         id: 'registro_imoveis',
-        label: 'Registro de Imóveis',
+        label: 'Documentos destinados aos Registros de Imóveis',
         shortLabel: 'RI',
         requiresImageAndMetadata: true,
-        title: 'Perfil Registro de Imóveis',
-        description: 'Checagem destinada aos documentos particulares digitalizados por particulares. O resultado considera PDF/PDF-A, assinatura digital ICP-Brasil, digitalização e imagem e metadados dos Anexos I e II, em conformidade com o Decreto nº 10.278/2020.',
-        applicable: ['PDF/PDF-A', 'Assinatura digital ICP-Brasil', 'Digitalização e imagem', 'Metadados dos Anexos I e II'],
+        title: 'Perfil: Documentos destinados aos Registros de Imóveis',
+        description: 'Checagem de documentos particulares digitalizados por particulares. O resultado considera PDF-A, assinatura digital ICP-Brasil, digitalização, imagem e metadados dos Anexos I e II, em conformidade com o Decreto nº 10.278/2020.',
+        applicable: ['PDF-A', 'Assinatura digital ICP-Brasil', 'Digitalização', 'Imagem', 'Metadados dos Anexos I e II'],
         notComputed: []
       },
       tabelionato_notas: {
         id: 'tabelionato_notas',
-        label: 'Tabelionato de Notas',
+        label: 'Documentos emitidos pelos Tabelionatos de Notas e Registros de Imóveis',
         shortLabel: 'Notas',
         requiresImageAndMetadata: false,
-        title: 'Perfil Tabelionato de Notas',
-        description: 'Checagem destinada aos instrumentos públicos notariais. O resultado considera PDF/PDF-A e assinatura digital ICP-Brasil, em conformidade com o Provimento CNJ nº 149/2023.',
-        applicable: ['PDF/PDF-A', 'Assinatura digital ICP-Brasil'],
+        title: 'Perfil: Documentos emitidos pelos Tabelionatos de Notas e Registros de Imóveis',
+        description: 'Checagem de títulos nato-digitais expedidos pela serventia. O resultado considera PDF/A e assinatura digital ICP-Brasil do delegatário, substituto ou preposto. Não incidem os requisitos do Decreto nº 10.278/2020, por se tratar de documento gerado nativamente em meio eletrônico, na forma do artigo 208, parágrafo 1º, incisos III e IV, do Provimento CN 149/2023.',
+        applicable: ['PDF/A', 'Assinatura digital ICP-Brasil do delegatário, substituto ou preposto'],
         notComputed: []
       }
     };
@@ -1143,7 +1143,7 @@
           result: profile.requiresImageAndMetadata ? 'Não verificável automaticamente' : 'Conferência externa, fora da contagem principal',
           guidance: profile.requiresImageAndMetadata
             ? 'A ferramenta não confirma se a digitalização corresponde integralmente ao original físico, nem se todas as páginas foram capturadas.'
-            : 'Para o perfil Tabelionato de Notas, a contagem principal considera PDF/PDF-A e assinatura digital ICP-Brasil. A conferência material permanece externa à ferramenta.'
+            : 'Para o perfil Documentos emitidos pelos Tabelionatos de Notas e Registros de Imóveis, a contagem principal considera PDF/A e assinatura digital ICP-Brasil do delegatário, substituto ou preposto. A conferência material permanece externa à ferramenta.'
         });
 
         const totals = summarize(details);
@@ -3054,7 +3054,7 @@
       lines.push('- A conformidade PDF/A é verificada tecnicamente pelo veraPDF, mas a adequação do documento ao caso concreto depende da finalidade de uso.');
       lines.push('- A assinatura digital é verificada por serviço técnico próprio, com análise do padrão PAdES, cadeia ICP-Brasil, revogação por OCSP ou LCR, DSS e carimbo do tempo quando disponível.');
       lines.push('- A correspondência integral com o original físico, a autoria material e a suficiência dos metadados podem depender de conferência externa ou sistema de gestão documental.');
-      lines.push('- O perfil Registro de Imóveis considera digitalização, imagem e metadados dos Anexos I e II. O perfil Tabelionato de Notas considera PDF/PDF-A e assinatura digital ICP-Brasil.');
+      lines.push('- O perfil Documentos destinados aos Registros de Imóveis considera PDF-A, assinatura digital ICP-Brasil, digitalização, imagem e metadados dos Anexos I e II. O perfil Documentos emitidos pelos Tabelionatos de Notas e Registros de Imóveis considera PDF/A e assinatura digital ICP-Brasil do delegatário, substituto ou preposto.');
       lines.push('');
       lines.push('Observação: relatório automatizado e preliminar. Não substitui a qualificação notarial e registral nem os demais procedimentos de análise do documento eletrônico.');
       return lines.join('\n');
