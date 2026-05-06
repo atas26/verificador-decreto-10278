@@ -206,7 +206,7 @@
 
     .form-row {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1fr);
       gap: 16px;
       align-items: end;
       margin-bottom: 16px;
@@ -625,6 +625,71 @@
     .legal-box p { margin: 0 0 10px; }
     .legal-box p:last-child { margin-bottom: 0; }
 
+    .profile-help {
+      margin: 14px 0 4px;
+      padding: 14px 16px;
+      border: 1px solid #d7e3f7;
+      border-radius: 16px;
+      background: #f8fbff;
+      color: #344054;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .profile-help-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 900;
+      color: #172033;
+      margin-bottom: 6px;
+    }
+
+    .profile-help-title::before {
+      content: "i";
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      display: inline-grid;
+      place-items: center;
+      background: #e9f1ff;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .profile-help p {
+      margin: 0;
+    }
+
+    .profile-help strong {
+      color: #172033;
+    }
+
+    .profile-scope {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .scope-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #eef4ff;
+      color: #0b5fff;
+      font-weight: 800;
+      font-size: 11px;
+    }
+
+    .scope-pill.optional {
+      background: #f2f4f7;
+      color: #667085;
+    }
+
     .beta-limitations {
       margin-top: 18px;
       padding: 14px 16px;
@@ -681,7 +746,7 @@
       <div class="card hero-main">
         <div class="eyebrow">Versão beta</div>
         <h1>Triagem e validação de documentos eletrônicos.</h1>
-        <p class="lead">Envie um PDF para verificar formato, hash, conformidade PDF/A, metadados, parâmetros do Decreto nº 10.278/2020 e assinatura digital ICP-Brasil.</p>
+        <p class="lead">Envie um PDF, escolha o perfil de análise e verifique formato, hash, conformidade PDF/A, assinatura digital ICP-Brasil e, quando aplicável, digitalização, imagem e metadados dos Anexos I e II, do Decreto nº 10.278/2020.</p>
         <div class="notice">O resultado é uma conferência automatizada do arquivo. Não substitui a qualificação notarial e registral nem os demais procedimentos de análise do documento eletrônico.</div>
       </div>
 
@@ -689,13 +754,13 @@
         <div>
           <h2 class="side-title">O que esta versão verifica</h2>
           <ul class="check-list">
-            <li><span class="dot"></span><span>Formato do arquivo e compatibilidade com o tipo documental informado.</span></li>
+            <li><span class="dot"></span><span>Formato do arquivo, PDF/PDF-A e compatibilidade com o perfil de análise selecionado.</span></li>
             <li><span class="dot"></span><span>Hash SHA-256 calculado no próprio navegador.</span></li>
             <li><span class="dot"></span><span>Validação PDF/A.</span></li>
             <li><span class="dot"></span><span>Detecção técnica de assinatura digital embutida em PDF.</span></li>
             <li><span class="dot"></span><span>Checagem da assinatura digital ICP-Brasil.</span></li>
-            <li><span class="dot"></span><span>A validação PDF/A é automatizada.</span></li>
-            <li><span class="dot"></span><span>A checagem da assinatura digital é automatizada.</span></li>
+            <li><span class="dot"></span><span>Registro de Imóveis: inclui PDF/PDF-A, assinatura digital ICP-Brasil, digitalização e imagem e metadados dos Anexos I e II.</span></li>
+            <li><span class="dot"></span><span>Tabelionato de Notas: inclui PDF/PDF-A e assinatura digital ICP-Brasil, sem digitalização, imagem e metadados dos Anexos I e II na contagem principal.</span></li>
           </ul>
         </div>
       </aside>
@@ -705,26 +770,15 @@
       <section class="card panel upload-panel">
         <div class="form-row">
           <div class="field">
-            <label for="purpose">Contexto de uso</label>
+            <label for="purpose">Perfil de análise</label>
             <select id="purpose">
-              <option value="public">Perante pessoa jurídica de direito público ou sem acordo prévio entre particulares</option>
-              <option value="private">Relação entre particulares com meio de comprovação aceito pelas partes</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label for="docType">Tipo de documento original</label>
-            <select id="docType">
-              <option value="printed_bw">Texto impresso, sem ilustração, em preto e branco</option>
-              <option value="printed_bw_illustrated">Texto impresso, com ilustração, em preto e branco</option>
-              <option value="printed_color">Texto impresso, com ilustração e cores</option>
-              <option value="manuscript_bw">Texto manuscrito, com ou sem ilustração, em preto e branco</option>
-              <option value="manuscript_color">Texto manuscrito, com ou sem ilustração, em cores</option>
-              <option value="photo_poster">Fotografia ou cartaz</option>
-              <option value="plant_map">Planta ou mapa</option>
+              <option value="registro_imoveis">Registro de Imóveis</option>
+              <option value="tabelionato_notas">Tabelionato de Notas</option>
             </select>
           </div>
         </div>
+
+        <div id="profileHelp" class="profile-help" aria-live="polite"></div>
 
         <input id="fileInput" type="file" accept="application/pdf,.pdf" class="hidden" />
         <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Selecionar arquivo PDF PAdES">
@@ -747,7 +801,7 @@
         <div class="empty" id="emptyState">
           <div>
             <strong>Nenhum arquivo analisado.</strong>
-            <p>Selecione o tipo documental, envie o arquivo e clique em analisar.</p>
+            <p>Selecione o perfil de análise, envie o arquivo e clique em analisar.</p>
           </div>
         </div>
 
@@ -884,14 +938,37 @@
       }
     };
 
+    const analysisProfiles = {
+      registro_imoveis: {
+        id: 'registro_imoveis',
+        label: 'Registro de Imóveis',
+        shortLabel: 'RI',
+        requiresImageAndMetadata: true,
+        title: 'Perfil Registro de Imóveis',
+        description: 'Checagem destinada aos documentos particulares digitalizados por particulares. O resultado considera PDF/PDF-A, assinatura digital ICP-Brasil, digitalização e imagem e metadados dos Anexos I e II, em conformidade com o Decreto nº 10.278/2020.',
+        applicable: ['PDF/PDF-A', 'Assinatura digital ICP-Brasil', 'Digitalização e imagem', 'Metadados dos Anexos I e II'],
+        notComputed: []
+      },
+      tabelionato_notas: {
+        id: 'tabelionato_notas',
+        label: 'Tabelionato de Notas',
+        shortLabel: 'Notas',
+        requiresImageAndMetadata: false,
+        title: 'Perfil Tabelionato de Notas',
+        description: 'Checagem destinada aos instrumentos públicos notariais. O resultado considera PDF/PDF-A e assinatura digital ICP-Brasil, em conformidade com o Provimento CNJ nº 149/2023.',
+        applicable: ['PDF/PDF-A', 'Assinatura digital ICP-Brasil'],
+        notComputed: []
+      }
+    };
+
     const els = {
       fileInput: document.getElementById('fileInput'),
       dropzone: document.getElementById('dropzone'),
       fileName: document.getElementById('fileName'),
       analyzeBtn: document.getElementById('analyzeBtn'),
       clearBtn: document.getElementById('clearBtn'),
-      docType: document.getElementById('docType'),
       purpose: document.getElementById('purpose'),
+      profileHelp: document.getElementById('profileHelp'),
       emptyState: document.getElementById('emptyState'),
       report: document.getElementById('report'),
       reportPanel: document.getElementById('reportPanel'),
@@ -937,6 +1014,8 @@
     });
 
     els.fileInput.addEventListener('change', event => setSelectedFile(event.target.files?.[0]));
+    els.purpose.addEventListener('change', updateProfileHelp);
+    updateProfileHelp();
     els.analyzeBtn.addEventListener('click', analyzeSelectedFile);
     els.clearBtn.addEventListener('click', clearAll);
     els.copyBtn.addEventListener('click', copyReport);
@@ -951,6 +1030,21 @@
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       });
+    }
+
+    function getAnalysisProfile() {
+      return analysisProfiles[els.purpose.value] || analysisProfiles.registro_imoveis;
+    }
+
+    function updateProfileHelp() {
+      if (!els.profileHelp) return;
+      const profile = getAnalysisProfile();
+      const applicable = profile.applicable.map(item => `<span class="scope-pill">${escapeHtml(item)}</span>`).join('');
+      els.profileHelp.innerHTML = `
+        <div class="profile-help-title">${escapeHtml(profile.title)}</div>
+        <p>${escapeHtml(profile.description)}</p>
+        <div class="profile-scope">${applicable}</div>
+      `;
     }
 
     function setSelectedFile(file) {
@@ -999,8 +1093,8 @@
         const buffer = await selectedFile.arrayBuffer();
         const bytes = new Uint8Array(buffer);
         const hash = await sha256(buffer);
-        const rule = rules[els.docType.value];
-        const purpose = els.purpose.value;
+        const rule = rules.printed_bw;
+        const profile = getAnalysisProfile();
         const basic = identifyFile(selectedFile, bytes);
         const details = [];
 
@@ -1024,11 +1118,15 @@
         }
 
         evaluateFormat(details, basic, rule, pdfInfo, pdfaValidation);
-        evaluatePdfNature(details, basic, pdfProfile);
-        evaluateResolution(details, basic, rule, pngInfo, pdfImageInfo, pdfProfile);
-        evaluateColor(details, basic, rule, pngInfo, pdfImageInfo);
-        evaluateSignature(details, basic, pdfInfo, purpose, signatureValidation);
-        evaluateMetadata(details, basic, pdfInfo, pngInfo);
+        if (profile.requiresImageAndMetadata) {
+          evaluatePdfNature(details, basic, pdfProfile);
+          evaluateResolution(details, basic, rule, pngInfo, pdfImageInfo, pdfProfile);
+          evaluateColor(details, basic, rule, pngInfo, pdfImageInfo);
+        }
+        evaluateSignature(details, basic, pdfInfo, profile.id, signatureValidation);
+        if (profile.requiresImageAndMetadata) {
+          evaluateMetadata(details, basic, pdfInfo, pngInfo);
+        }
 
         details.push({
           req: 'Hash SHA-256 do arquivo analisado',
@@ -1039,13 +1137,15 @@
 
         details.push({
           req: 'Conferência com o documento físico original',
-          status: 'warn',
-          result: 'Não verificável automaticamente',
-          guidance: 'A ferramenta não confirma se a digitalização corresponde integralmente ao original físico, nem se todas as páginas foram capturadas.'
+          status: profile.requiresImageAndMetadata ? 'warn' : 'neutral',
+          result: profile.requiresImageAndMetadata ? 'Não verificável automaticamente' : 'Conferência externa, fora da contagem principal',
+          guidance: profile.requiresImageAndMetadata
+            ? 'A ferramenta não confirma se a digitalização corresponde integralmente ao original físico, nem se todas as páginas foram capturadas.'
+            : 'Para o perfil Tabelionato de Notas, a contagem principal considera PDF/PDF-A e assinatura digital ICP-Brasil. A conferência material permanece externa à ferramenta.'
         });
 
         const totals = summarize(details);
-        renderReport({ basic, rule, details, totals, hash });
+        renderReport({ basic, rule, details, totals, hash, profile });
       } catch (error) {
         console.error(error);
         showError('Não foi possível analisar o arquivo. Verifique se o arquivo não está corrompido e tente novamente.');
@@ -1603,7 +1703,7 @@
     function evaluateFormat(details, basic, rule, pdfInfo, pdfaValidation) {
       if (rule.expected === 'PDF/A') {
         if (basic.kind !== 'PDF') {
-          details.push({ req: 'Formato exigido', status: 'fail', result: `Arquivo ${basic.kind}`, guidance: `Para este tipo documental, o padrão mínimo é ${rule.expected}. Envie arquivo PDF/A.` });
+          details.push({ req: 'Formato exigido', status: 'fail', result: `Arquivo ${basic.kind}`, guidance: `Para este perfil, o padrão mínimo é ${rule.expected}. Envie arquivo PDF/A.` });
           return;
         }
 
@@ -1650,7 +1750,7 @@
 
       if (rule.expected === 'PNG') {
         if (basic.kind === 'PNG') {
-          details.push({ req: 'Formato exigido', status: 'ok', result: 'PNG detectado', guidance: 'O formato é compatível com o tipo documental selecionado.' });
+          details.push({ req: 'Formato exigido', status: 'ok', result: 'PNG detectado', guidance: 'O formato é compatível com o perfil selecionado.' });
         } else {
           details.push({ req: 'Formato exigido', status: 'fail', result: `Arquivo ${basic.kind}`, guidance: 'Para fotografia, cartaz, planta ou mapa, o padrão mínimo do decreto indica PNG.' });
         }
@@ -1871,7 +1971,7 @@
           relevantImageCount: relevantImages.length,
           pageLikeImageCount: pageLikeImages.length,
           pageLikeImages,
-          guidance: 'Foram localizadas imagens com área compatível com página digitalizada. A resolução efetiva deve atender ao dpi mínimo do tipo documental.'
+          guidance: 'Foram localizadas imagens com área compatível com página digitalizada. A resolução efetiva deve atender ao dpi mínimo do perfil.'
         };
       }
 
@@ -1935,7 +2035,7 @@
           if (minDpi >= rule.minDpi) {
             details.push({ req: `Resolução mínima de ${rule.minDpi} dpi`, status: 'ok', result: `${pngInfo.dpiX} x ${pngInfo.dpiY} dpi`, guidance: 'A resolução informada nos metadados do PNG atende ao parâmetro mínimo.' });
           } else {
-            details.push({ req: `Resolução mínima de ${rule.minDpi} dpi`, status: 'fail', result: `${pngInfo.dpiX} x ${pngInfo.dpiY} dpi`, guidance: 'A resolução informada está abaixo do padrão mínimo para o tipo documental selecionado.' });
+            details.push({ req: `Resolução mínima de ${rule.minDpi} dpi`, status: 'fail', result: `${pngInfo.dpiX} x ${pngInfo.dpiY} dpi`, guidance: 'A resolução informada está abaixo do padrão mínimo para o perfil selecionado.' });
           }
         } else {
           details.push({ req: `Resolução mínima de ${rule.minDpi} dpi`, status: 'warn', result: 'DPI não informado no arquivo PNG', guidance: 'O arquivo não contém metadado pHYs com unidade em metro. A resolução não pôde ser confirmada automaticamente.' });
@@ -1983,7 +2083,7 @@
               req: `Resolução mínima de ${rule.minDpi} dpi`,
               status: 'fail',
               result: `Não conforme. Menor resolução efetiva de imagem de página: ${formatDpi(minDpi)}`,
-              guidance: `Imagem de página abaixo do parâmetro mínimo do tipo documental selecionado. Foram analisadas ${relevantText}. Amostra: ${sample}.`
+              guidance: `Imagem de página abaixo do parâmetro mínimo do perfil selecionado. Foram analisadas ${relevantText}. Amostra: ${sample}.`
             });
           } else {
             details.push({
@@ -2015,7 +2115,7 @@
         return;
       }
 
-      details.push({ req: `Resolução mínima de ${rule.minDpi} dpi`, status: 'fail', result: 'Arquivo não reconhecido', guidance: 'Envie PDF/A ou PNG conforme o tipo documental.' });
+      details.push({ req: `Resolução mínima de ${rule.minDpi} dpi`, status: 'fail', result: 'Arquivo não reconhecido', guidance: 'Envie PDF/A conforme o perfil.' });
     }
 
     function evaluateColor(details, basic, rule, pngInfo, pdfImageInfo) {
@@ -2084,7 +2184,7 @@
         return;
       }
 
-      details.push({ req: `Cor esperada: ${rule.color}`, status: 'fail', result: 'Arquivo não reconhecido', guidance: 'Envie PDF/A ou PNG conforme o tipo documental.' });
+      details.push({ req: `Cor esperada: ${rule.color}`, status: 'fail', result: 'Arquivo não reconhecido', guidance: 'Envie PDF/A conforme o perfil.' });
     }
 
 
@@ -2275,16 +2375,6 @@
     }
 
     function evaluateSignature(details, basic, pdfInfo, purpose, signatureValidation) {
-      if (purpose === 'private') {
-        details.push({
-          req: 'Autoria, integridade e confidencialidade',
-          status: 'warn',
-          result: 'Depende do meio aceito pelas partes',
-          guidance: 'Em relações entre particulares, o meio de comprovação pode variar conforme aceitação das partes. A ferramenta não verifica esse acordo.'
-        });
-        return;
-      }
-
       if (basic.kind === 'PDF') {
         if (signatureValidation?.available && signatureValidation.executed) {
           const chainPath = Array.isArray(signatureValidation.chainPath) && signatureValidation.chainPath.length
@@ -2596,14 +2686,14 @@
       const missing = checks.filter(field => !field.located).map(field => field.label);
       if (missing.length) {
         details.push({
-          req: 'Resumo dos metadados do Anexo II',
+          req: 'Resumo dos metadados dos Anexos I e II',
           status: 'fail',
           result: `Campos faltantes: ${missing.join('; ')}`,
           guidance: 'O arquivo deve ser corrigido ou acompanhado de sistema de gestão que registre os metadados mínimos exigidos. A versão beta considera não conforme o campo obrigatório que não aparece nos metadados legíveis do arquivo.'
         });
       } else {
         details.push({
-          req: 'Resumo dos metadados do Anexo II',
+          req: 'Resumo dos metadados dos Anexos I e II',
           status: 'ok',
           result: 'Todos os campos obrigatórios foram localizados nos metadados legíveis',
           guidance: 'A conferência é preliminar. A validação definitiva exige ferramenta própria, principalmente quando os metadados estão comprimidos, criptografados ou armazenados em sistema externo.'
@@ -2719,7 +2809,7 @@
       return { status: 'ok', label: 'Conforme preliminar', ok, warn, fail };
     }
 
-    function renderReport({ basic, rule, details, totals, hash }) {
+    function renderReport({ basic, rule, details, totals, hash, profile }) {
       els.emptyState.classList.add('hidden');
       els.report.classList.remove('hidden');
 
@@ -2730,9 +2820,9 @@
       const bannerClass = totals.status === 'ok' ? 'ok' : totals.status === 'fail' ? 'fail' : 'warn';
       els.statusBanner.className = `status-banner ${bannerClass}`;
       els.statusTitle.textContent = totals.label;
-      els.statusText.textContent = statusMessage(totals);
+      els.statusText.textContent = statusMessage(totals, profile);
 
-      const blockSummaries = buildBlockSummaries(details);
+      const blockSummaries = buildBlockSummaries(details, profile);
       if (els.blockSummary) {
         els.blockSummary.innerHTML = blockSummaries.map(item => `
           <article class="block-card">
@@ -2754,7 +2844,7 @@
       `).join('');
 
       highlightExpiredCertificateText(els.report);
-      lastReportText = buildTextReport({ basic, rule, details, totals, hash, blockSummaries });
+      lastReportText = buildTextReport({ basic, rule, details, totals, hash, blockSummaries, profile });
     }
 
     function highlightExpiredCertificateText(root) {
@@ -2775,53 +2865,67 @@
     }
 
 
-    function buildBlockSummaries(details) {
+    function buildBlockSummaries(details, profile) {
       const formatItem = details.find(item => item.req === 'Formato PDF/A' || item.req === 'Formato exigido');
       const signatureItem = details.find(item => item.req === 'Assinatura digital ICP-Brasil');
       const natureItem = details.find(item => item.req === 'Natureza técnica do PDF');
       const resolutionItem = details.find(item => item.req.startsWith('Resolução mínima'));
       const colorItem = details.find(item => item.req.startsWith('Cor esperada'));
-      const metadataItem = details.find(item => item.req === 'Resumo dos metadados do Anexo II');
+      const metadataItem = details.find(item => item.req === 'Resumo dos metadados dos Anexos I e II');
       const hashItem = details.find(item => item.req === 'Hash SHA-256 do arquivo analisado');
       const physicalItem = details.find(item => item.req === 'Conferência com o documento físico original');
 
       const imageStatus = worstStatus([natureItem?.status, resolutionItem?.status, colorItem?.status]);
       const integrityStatus = worstStatus([hashItem?.status, physicalItem?.status]);
 
-      return [
+      const items = [
+        {
+          title: 'Perfil de análise',
+          status: 'neutral',
+          result: profile?.label || 'Não informado',
+          text: profile?.description || 'O perfil define quais blocos entram na contagem principal do resultado.'
+        },
         {
           title: 'Formato e PDF/A',
           status: formatItem?.status || 'neutral',
           result: cleanSummaryResult(formatItem?.result || 'Não avaliado'),
           text: formatItem?.status === 'ok'
             ? 'O formato técnico principal do arquivo foi validado conforme o item analisado.'
-            : 'Verifique a geração do arquivo e a conformidade PDF/A quando o tipo documental exigir esse padrão.'
+            : 'Verifique a geração do arquivo e a conformidade PDF/A quando o perfil exigir esse padrão.'
         },
-        buildSignatureBlockSummary(signatureItem),
-        {
-          title: 'Digitalização e imagem',
-          status: imageStatus,
-          result: cleanSummaryResult(resolutionItem?.result || natureItem?.result || 'Não avaliada'),
-          text: [natureItem?.result, resolutionItem?.result, colorItem?.result]
-            .filter(Boolean)
-            .map(cleanSummaryResult)
-            .join(' | ') || 'Sem elementos suficientes para síntese de imagem.'
-        },
-        {
-          title: 'Metadados do Anexo II',
-          status: metadataItem?.status || 'neutral',
-          result: cleanSummaryResult(metadataItem?.result || 'Não avaliados'),
-          text: metadataItem?.status === 'ok'
-            ? 'Os metadados obrigatórios foram localizados nos campos legíveis do arquivo analisado.'
-            : 'Os metadados ausentes devem ser incluídos no arquivo ou comprovados por sistema de gestão documental.'
-        },
-        {
-          title: 'Hash e conferência material',
-          status: integrityStatus,
-          result: 'Hash calculado e conferência física não automatizada',
-          text: 'O hash identifica o arquivo analisado. A correspondência integral com o original físico depende de conferência externa.'
-        }
+        buildSignatureBlockSummary(signatureItem)
       ];
+
+      if (!profile || profile.requiresImageAndMetadata) {
+        items.push(
+          {
+            title: 'Digitalização e imagem',
+            status: imageStatus,
+            result: cleanSummaryResult(resolutionItem?.result || natureItem?.result || 'Não avaliada'),
+            text: [natureItem?.result, resolutionItem?.result, colorItem?.result]
+              .filter(Boolean)
+              .map(cleanSummaryResult)
+              .join(' | ') || 'Sem elementos suficientes para síntese de imagem.'
+          },
+          {
+            title: 'Metadados dos Anexos I e II',
+            status: metadataItem?.status || 'neutral',
+            result: cleanSummaryResult(metadataItem?.result || 'Não avaliados'),
+            text: metadataItem?.status === 'ok'
+              ? 'Os metadados obrigatórios foram localizados nos campos legíveis do arquivo analisado.'
+              : 'Os metadados ausentes devem ser incluídos no arquivo ou comprovados por sistema de gestão documental, quando exigíveis para o perfil selecionado.'
+          }
+        );
+      }
+
+      items.push({
+        title: 'Hash e conferência material',
+        status: integrityStatus,
+        result: 'Hash calculado e conferência física não automatizada',
+        text: 'O hash identifica o arquivo analisado. A correspondência integral com o original físico depende de conferência externa.'
+      });
+
+      return items;
     }
 
     function buildSignatureBlockSummary(signatureItem) {
@@ -2886,10 +2990,21 @@
       return stripHtml(String(value || '')).replace(/\s+/g, ' ').trim();
     }
 
-    function statusMessage(totals) {
-      if (totals.status === 'fail') return `Foram encontrados ${totals.fail} ponto(s) de não conformidade técnica preliminar. Revise o arquivo antes do envio ao registro imobiliário e a outros órgãos que exigem os requisitos do Decreto nº 10.278/2020.`;
-      if (totals.status === 'warn') return `Não foram detectadas falhas impeditivas pela versão beta, mas ${totals.warn} item(ns) dependem de validação técnica externa ou conferência manual.`;
-      return 'Os itens verificáveis pela versão beta apresentaram resultado compatível. Ainda assim, mantenha a conferência jurídica e técnica externa quando necessária.';
+    function statusMessage(totals, profile) {
+      const label = profile?.label || 'perfil selecionado';
+
+      if (totals.status === 'fail') {
+        if (profile && !profile.requiresImageAndMetadata) {
+          return `Foram encontrados ${totals.fail} ponto(s) de não conformidade técnica preliminar nos critérios aplicáveis ao perfil ${label}. Revise PDF/PDF-A e assinatura digital antes do uso.`;
+        }
+        return `Foram encontrados ${totals.fail} ponto(s) de não conformidade técnica preliminar. Revise o arquivo antes do envio ao registro imobiliário e a outros órgãos que exigem os requisitos do Decreto nº 10.278/2020.`;
+      }
+
+      if (totals.status === 'warn') {
+        return `Não foram detectadas falhas impeditivas pela versão beta nos critérios aplicáveis ao perfil ${label}, mas ${totals.warn} item(ns) dependem de validação técnica externa ou conferência manual.`;
+      }
+
+      return `Os itens verificáveis pela versão beta apresentaram resultado compatível com o perfil ${label}. Ainda assim, mantenha a conferência jurídica e técnica externa quando necessária.`;
     }
 
     function labelForStatus(status) {
@@ -2899,18 +3014,21 @@
       return 'Informativo';
     }
 
-    function buildTextReport({ basic, rule, details, totals, hash, blockSummaries = [] }) {
+    function buildTextReport({ basic, rule, details, totals, hash, blockSummaries = [], profile }) {
       const lines = [];
       lines.push('RELATÓRIO TÉCNICO PRELIMINAR');
       lines.push('Decreto nº 10.278/2020');
       lines.push('');
       lines.push(`Resultado: ${totals.label}`);
+      lines.push(`Perfil de análise: ${profile?.label || 'Não informado'}`);
+      if (profile?.description) {
+        lines.push(`Escopo do perfil: ${profile.description}`);
+      }
       lines.push(`Arquivo: ${basic.name}`);
       lines.push(`Formato detectado: ${basic.kind}`);
       lines.push(`Extensão: ${basic.ext || 'não informada'}`);
       lines.push(`MIME: ${basic.mime}`);
       lines.push(`Tamanho: ${formatBytes(basic.size)}`);
-      lines.push(`Tipo documental informado: ${rule.label}`);
       lines.push(`Hash SHA-256: ${hash}`);
       lines.push('');
       if (blockSummaries.length) {
@@ -2934,6 +3052,7 @@
       lines.push('- A conformidade PDF/A é verificada tecnicamente pelo veraPDF, mas a adequação do documento ao caso concreto depende da finalidade de uso.');
       lines.push('- A assinatura digital é verificada por serviço técnico próprio, com análise do padrão PAdES, cadeia ICP-Brasil, revogação por OCSP ou LCR, DSS e carimbo do tempo quando disponível.');
       lines.push('- A correspondência integral com o original físico, a autoria material e a suficiência dos metadados podem depender de conferência externa ou sistema de gestão documental.');
+      lines.push('- O perfil Registro de Imóveis considera digitalização, imagem e metadados dos Anexos I e II. O perfil Tabelionato de Notas considera PDF/PDF-A e assinatura digital ICP-Brasil.');
       lines.push('');
       lines.push('Observação: relatório automatizado e preliminar. Não substitui a qualificação notarial e registral nem os demais procedimentos de análise do documento eletrônico.');
       return lines.join('\n');
