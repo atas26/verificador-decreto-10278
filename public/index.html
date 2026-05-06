@@ -2177,12 +2177,15 @@
         !Number.isNaN(validationDate.getTime())
       );
 
+      const certificateExpiredAtValidation = Boolean(hasComparableValidationDate && validationDate > notAfter);
+      const certificateNotYetValidAtValidation = Boolean(hasComparableValidationDate && validationDate < notBefore);
+
       let certificateStatusAtValidationText = 'Situação do certificado na data da validação: não verificável.';
       let certificateStatusAtValidationClass = 'signature-validity-warning';
-      if (hasComparableValidationDate && validationDate > notAfter) {
+      if (certificateExpiredAtValidation) {
         certificateStatusAtValidationText = 'Certificado expirado na data da validação.';
         certificateStatusAtValidationClass = 'signature-validity-expired';
-      } else if (hasComparableValidationDate && validationDate < notBefore) {
+      } else if (certificateNotYetValidAtValidation) {
         certificateStatusAtValidationText = 'Certificado ainda não vigente na data da validação.';
         certificateStatusAtValidationClass = 'signature-validity-bad';
       } else if (hasComparableValidationDate) {
@@ -2190,29 +2193,37 @@
         certificateStatusAtValidationClass = 'signature-validity-info';
       }
 
-      const timestampNote = signatureValidation?.timestampPresent === true && signatureValidation?.timestampValid === true
+      const timestampValid = signatureValidation?.timestampPresent === true && signatureValidation?.timestampValid === true;
+      const timestampNote = timestampValid
         ? 'Carimbo do tempo documental localizado e validado.'
         : 'Sem carimbo do tempo documental identificado.';
 
       return {
         arquivo: basic?.name || selectedFile?.name || 'Não localizado',
+        numeroSerieCertificado: firstSignature?.certificateSerialNumber || firstSignature?.certificateSerialNumberHex || 'Não localizado',
+        numeroSerieCertificadoHex: firstSignature?.certificateSerialNumberHex || null,
+        emissorCertificado: firstSignature?.certificateIssuerName || firstSignature?.certificateIssuer || 'Não localizado',
         assinanteNome: extracted.nome || 'Não localizado',
         assinanteCpf: formatCpfMasked(extracted.cpf),
         certificadoVigencia: certificateValidity,
         dataAssinatura: formatDateTimeBR(firstSignature?.signDate),
         dataValidacao: formatDateTimeBR(validationDate.toISOString()),
+        classificacaoTecnica: signatureValidation?.standard || 'Não informada',
         signedWithinCertificateValidity,
         signatureValidityStatusText,
         signatureValidityStatusClass,
+        certificateExpiredAtValidation,
+        certificateNotYetValidAtValidation,
         certificateStatusAtValidationText,
         certificateStatusAtValidationClass,
+        timestampValid,
         timestampNote
       };
     }
 
     function signaturePresentationText(data) {
       if (!data) return '';
-      return ` Arquivo: ${data.arquivo}. Assinante: ${data.assinanteNome}. CPF: ${data.assinanteCpf}. Vigência do certificado: ${data.certificadoVigencia}. Documento assinado em: ${data.dataAssinatura}. ${data.signatureValidityStatusText} Data da validação: ${data.dataValidacao}. ${data.certificateStatusAtValidationText} ${data.timestampNote}`;
+      return ` Arquivo: ${data.arquivo}. Número de série do certificado: ${data.numeroSerieCertificado}. Assinante: ${data.assinanteNome}. CPF: ${data.assinanteCpf}. Emissor do certificado: ${data.emissorCertificado}. Vigência do certificado: ${data.certificadoVigencia}. Documento assinado em: ${data.dataAssinatura}. ${data.signatureValidityStatusText} Data da validação: ${data.dataValidacao}. ${data.certificateStatusAtValidationText} ${data.timestampNote}`;
     }
 
     function signaturePresentationHtml(data) {
@@ -2220,14 +2231,17 @@
       return `
         <div class="signature-extra">
           <div><strong>Arquivo:</strong> ${escapeHtml(data.arquivo)}</div>
+          <div><strong>Número de série do certificado:</strong> ${escapeHtml(data.numeroSerieCertificado)}</div>
           <div><strong>Assinante:</strong> ${escapeHtml(data.assinanteNome)}</div>
           <div><strong>CPF:</strong> ${escapeHtml(data.assinanteCpf)}</div>
+          <div><strong>Emissor do certificado:</strong> ${escapeHtml(data.emissorCertificado)}</div>
           <div><strong>Vigência do certificado:</strong> ${escapeHtml(data.certificadoVigencia)}</div>
           <div><strong>Documento assinado em:</strong> ${escapeHtml(data.dataAssinatura)}</div>
           <div class="${escapeHtml(data.signatureValidityStatusClass)}">${escapeHtml(data.signatureValidityStatusText)}</div>
           <div><strong>Data da validação:</strong> ${escapeHtml(data.dataValidacao)}</div>
           <div class="${escapeHtml(data.certificateStatusAtValidationClass)}">${escapeHtml(data.certificateStatusAtValidationText)}</div>
           <div class="signature-time-note">${escapeHtml(data.timestampNote)}</div>
+          <div><strong>Classificação técnica:</strong> ${escapeHtml(data.classificacaoTecnica)}</div>
         </div>
       `;
     }
@@ -2305,8 +2319,8 @@
               details.push({
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'ok',
-                result: classification,
-                guidance: guidanceOk,
+                result: 'Assinatura aprovada',
+                guidance: `${guidanceOk} Classificação técnica: ${classification.replace('Classificação técnica ', '')}.`,
                 signaturePresentation
               });
               return;
@@ -2316,7 +2330,7 @@
               details.push({
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'fail',
-                result: 'Certificado revogado',
+                result: 'Assinatura revogada',
                 guidance: `${signatureValidation.message || 'O certificado do assinante consta como revogado na fonte consultada.'}${standard}${level}${signatureContext}${signers}${chainPath}${revocationInfo}${warnings}`,
                 signaturePresentation
               });
@@ -2338,7 +2352,7 @@
               details.push({
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'warn',
-                result: 'Assinatura válida na revisão assinada, mas PDF final não aceito automaticamente',
+                result: 'Assinatura indeterminada',
                 guidance: `${signatureValidation.message || 'A assinatura foi validada sobre a revisão assinada, mas o PDF final contém atualização posterior não classificada como técnica permitida.'}${standard}${level}${signatureContext}${signers}${chainPath}${revocationInfo}${signatureValidation.postSignatureUpdateMessage ? ` ${signatureValidation.postSignatureUpdateMessage}` : ''}${warnings}`,
                 signaturePresentation
               });
@@ -2349,7 +2363,7 @@
               details.push({
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'warn',
-                result: 'Assinatura validada, mas cadeia ICP-Brasil não concluída',
+                result: 'Assinatura indeterminada',
                 guidance: `${signatureValidation.message || 'A assinatura foi validada, mas a cadeia de certificação não foi concluída até âncora confiável da ICP-Brasil.'}${standard}${level}${signatureContext}${signers}${warnings}`,
                 signaturePresentation
               });
@@ -2360,7 +2374,7 @@
               details.push({
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'warn',
-                result: 'Assinatura validada, mas revogação não consultada',
+                result: 'Assinatura indeterminada',
                 guidance: `${signatureValidation.message || 'A assinatura e o certificado foram validados, mas a consulta de revogação por LCR ou OCSP não foi concluída.'}${standard}${level}${signatureContext}${signers}${chainPath}${warnings}`,
                 signaturePresentation
               });
@@ -2371,7 +2385,7 @@
               details.push({
                 req: 'Assinatura digital ICP-Brasil',
                 status: 'warn',
-                result: 'Assinatura ICP-Brasil validada parcialmente',
+                result: 'Assinatura indeterminada',
                 guidance: `${signatureValidation.message || 'Assinatura digital validada, mas ainda há critérios técnicos não concluídos para aceitação automática.'}${standard}${level}${signatureContext}${signers}${chainPath}${revocationInfo}${timestampInfo}${policyInfo}${warnings}`,
                 signaturePresentation
               });
@@ -2381,7 +2395,7 @@
             details.push({
               req: 'Assinatura digital ICP-Brasil',
               status: 'warn',
-              result: 'Assinatura digital detectada, mas validação conclusiva não obtida',
+              result: 'Assinatura indeterminada',
               guidance: `${signatureValidation.message || 'O serviço técnico detectou assinatura embutida, mas não concluiu a validação técnica necessária.'}${standard}${level}${signatureContext}${signers}${warnings}`,
               signaturePresentation
             });
@@ -2731,15 +2745,7 @@
             ? 'O formato técnico principal do arquivo foi validado conforme o item analisado.'
             : 'Verifique a geração do arquivo e a conformidade PDF/A quando o tipo documental exigir esse padrão.'
         },
-        {
-          title: 'Assinatura digital',
-          status: signatureItem?.status || 'neutral',
-          result: cleanSummaryResult(signatureItem?.result || 'Não avaliada'),
-          text: signatureItem?.status === 'ok'
-            ? 'A assinatura foi tratada em bloco próprio, com cadeia ICP-Brasil, revogação e classificação técnica quando disponíveis.'
-            : 'A assinatura exige validação técnica específica ou nova conferência conforme o resultado detalhado.',
-          signaturePresentation: signatureItem?.signaturePresentation || null
-        },
+        buildSignatureBlockSummary(signatureItem),
         {
           title: 'Digitalização e imagem',
           status: imageStatus,
@@ -2764,6 +2770,56 @@
           text: 'O hash identifica o arquivo analisado. A correspondência integral com o original físico depende de conferência externa.'
         }
       ];
+    }
+
+    function buildSignatureBlockSummary(signatureItem) {
+      const presentation = signatureItem?.signaturePresentation || null;
+      const base = {
+        title: 'Assinatura digital',
+        status: signatureItem?.status || 'neutral',
+        result: cleanSummaryResult(signatureItem?.result || 'Não avaliada'),
+        text: 'A assinatura exige validação técnica específica ou nova conferência conforme o resultado detalhado.',
+        signaturePresentation: presentation
+      };
+
+      if (!signatureItem) {
+        return base;
+      }
+
+      const rawResult = cleanSummaryResult(signatureItem.result || '');
+      const revoked = rawResult.toLowerCase().includes('revogada');
+      const expiredWithoutTimestamp = presentation?.certificateExpiredAtValidation === true && presentation?.timestampValid !== true;
+
+      if (revoked) {
+        return {
+          ...base,
+          status: 'fail',
+          result: 'Assinatura revogada',
+          text: 'A consulta de revogação indicou que o certificado consta como revogado.'
+        };
+      }
+
+      if (expiredWithoutTimestamp || signatureItem.status === 'warn' || rawResult.toLowerCase().includes('indeterminada')) {
+        return {
+          ...base,
+          status: 'warn',
+          result: 'Assinatura indeterminada',
+          text: expiredWithoutTimestamp
+            ? 'O certificado está expirado na data da validação e não foi localizado carimbo do tempo documental válido. Consulte os detalhes da assinatura.'
+            : 'Não foi possível concluir automaticamente todos os elementos necessários para aprovação da assinatura.'
+        };
+      }
+
+      if (signatureItem.status === 'ok') {
+        return {
+          ...base,
+          status: 'ok',
+          result: 'Assinatura aprovada',
+          text: 'A assinatura foi conferida, com cadeia ICP-Brasil, revogação e classificação técnica quando disponíveis.'
+        };
+      }
+
+      return base;
     }
 
     function worstStatus(statuses) {
