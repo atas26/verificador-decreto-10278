@@ -2198,6 +2198,31 @@
         ? 'Carimbo do tempo documental localizado e validado.'
         : 'Sem carimbo do tempo documental identificado.';
 
+      const revocationStatusRaw = String(signatureValidation?.revocationStatus || '').toLowerCase();
+      const revocationSource = signatureValidation?.revocationSource || signatureValidation?.revocationMethod || '';
+      let revocationStatusText = 'Revogação: não consultada.';
+      let revocationStatusClass = 'signature-validity-warning';
+
+      if (signatureValidation?.revoked === true || revocationStatusRaw === 'revoked') {
+        const date = signatureValidation?.revocationDate ? ` Data da revogação: ${formatDateTimeBR(signatureValidation.revocationDate)}.` : '';
+        const reason = signatureValidation?.revocationReason ? ` Motivo: ${signatureValidation.revocationReason}.` : '';
+        revocationStatusText = `Revogação: certificado revogado.${date}${reason}`;
+        revocationStatusClass = 'signature-validity-bad';
+      } else if (revocationStatusRaw === 'good' || (signatureValidation?.revocationChecked === true && signatureValidation?.revoked === false)) {
+        const sourceText = revocationSource ? `, por ${revocationSource}` : '';
+        const evidenceText = signatureValidation?.revocationEvidenceValid === true ? ' Evidência validada.' : '';
+        const freshText = signatureValidation?.revocationFresh === true
+          ? ' Evidência atual.'
+          : signatureValidation?.revocationFresh === false
+            ? ' Atualidade da evidência não confirmada.'
+            : '';
+        revocationStatusText = `Revogação: não revogado${sourceText}.${evidenceText}${freshText}`;
+        revocationStatusClass = 'signature-validity-info';
+      } else if (revocationStatusRaw === 'indeterminate') {
+        revocationStatusText = 'Revogação: indeterminada. Não foi possível concluir a situação de revogação pela fonte consultada.';
+        revocationStatusClass = 'signature-validity-warning';
+      }
+
       return {
         arquivo: basic?.name || selectedFile?.name || 'Não localizado',
         numeroSerieCertificado: firstSignature?.certificateSerialNumber || firstSignature?.certificateSerialNumberHex || 'Não localizado',
@@ -2217,13 +2242,15 @@
         certificateStatusAtValidationText,
         certificateStatusAtValidationClass,
         timestampValid,
-        timestampNote
+        timestampNote,
+        revocationStatusText,
+        revocationStatusClass
       };
     }
 
     function signaturePresentationText(data) {
       if (!data) return '';
-      return ` Arquivo: ${data.arquivo}. Número de série do certificado: ${data.numeroSerieCertificado}. Assinante: ${data.assinanteNome}. CPF: ${data.assinanteCpf}. Emissor do certificado: ${data.emissorCertificado}. Vigência do certificado: ${data.certificadoVigencia}. Documento assinado em: ${data.dataAssinatura}. ${data.signatureValidityStatusText} Data da validação: ${data.dataValidacao}. ${data.certificateStatusAtValidationText} ${data.timestampNote}`;
+      return ` Arquivo: ${data.arquivo}. Número de série do certificado: ${data.numeroSerieCertificado}. Assinante: ${data.assinanteNome}. CPF: ${data.assinanteCpf}. Emissor do certificado: ${data.emissorCertificado}. Vigência do certificado: ${data.certificadoVigencia}. Documento assinado em: ${data.dataAssinatura}. ${data.signatureValidityStatusText} Data da validação: ${data.dataValidacao}. ${data.certificateStatusAtValidationText} ${data.revocationStatusText} ${data.timestampNote}`;
     }
 
     function signaturePresentationHtml(data) {
@@ -2240,6 +2267,7 @@
           <div class="${escapeHtml(data.signatureValidityStatusClass)}">${escapeHtml(data.signatureValidityStatusText)}</div>
           <div><strong>Data da validação:</strong> ${escapeHtml(data.dataValidacao)}</div>
           <div class="${escapeHtml(data.certificateStatusAtValidationClass)}">${escapeHtml(data.certificateStatusAtValidationText)}</div>
+          <div class="${escapeHtml(data.revocationStatusClass)}">${escapeHtml(data.revocationStatusText)}</div>
           <div class="signature-time-note">${escapeHtml(data.timestampNote)}</div>
           <div><strong>Classificação técnica:</strong> ${escapeHtml(data.classificacaoTecnica)}</div>
         </div>
@@ -2470,34 +2498,58 @@
     }
 
     function formatSignatureRevocationInfo(signatureValidation) {
-      if (signatureValidation?.revocationChecked !== true) {
-        return '';
-      }
+      const status = String(signatureValidation?.revocationStatus || '').toLowerCase();
+      const source = signatureValidation?.revocationSource || signatureValidation?.revocationMethod || '';
+      const sourceText = source ? ` por ${source}` : '';
 
-      const method = String(signatureValidation.revocationMethod || '').toUpperCase();
-
-      if (signatureValidation.revoked === true) {
-        const date = signatureValidation.revocationDate ? ` em ${signatureValidation.revocationDate}` : '';
+      if (signatureValidation?.revoked === true || status === 'revoked') {
+        const date = signatureValidation.revocationDate ? ` Data da revogação: ${signatureValidation.revocationDate}.` : '';
         const reason = signatureValidation.revocationReason ? ` Motivo: ${signatureValidation.revocationReason}.` : '';
-        return ` Consulta de revogação realizada por ${method || 'método informado pelo validador'}. O certificado consta como revogado${date}.${reason}`;
+        return ` Revogação: certificado revogado${sourceText}.${date}${reason}`;
       }
 
-      if (method === 'OCSP') {
-        const status = signatureValidation.ocspStatus ? ` Status OCSP: ${signatureValidation.ocspStatus}.` : '';
-        const producedAt = signatureValidation.ocspProducedAt ? ` Resposta produzida em ${signatureValidation.ocspProducedAt}.` : '';
-        const thisUpdate = signatureValidation.ocspThisUpdate ? ` Atualização informada em ${signatureValidation.ocspThisUpdate}.` : '';
-        const nextUpdate = signatureValidation.ocspNextUpdate ? ` Próxima atualização em ${signatureValidation.ocspNextUpdate}.` : '';
-        return ` Consulta de revogação realizada por OCSP, sem identificação de revogação.${status}${producedAt}${thisUpdate}${nextUpdate}`;
+      if (status === 'good' || (signatureValidation?.revocationChecked === true && signatureValidation?.revoked === false)) {
+        const evidence = signatureValidation?.revocationEvidenceValid === true ? ' Evidência de revogação validada.' : '';
+        const fresh = signatureValidation?.revocationFresh === true
+          ? ' Evidência atual.'
+          : signatureValidation?.revocationFresh === false
+            ? ' Atualidade da evidência não confirmada.'
+            : '';
+
+        if (String(source).toUpperCase() === 'OCSP') {
+          const ocspStatus = signatureValidation.ocspStatus ? ` Status OCSP: ${signatureValidation.ocspStatus}.` : '';
+          const producedAt = signatureValidation.ocspProducedAt ? ` Resposta produzida em ${signatureValidation.ocspProducedAt}.` : '';
+          const thisUpdate = signatureValidation.revocationThisUpdate || signatureValidation.ocspThisUpdate;
+          const nextUpdate = signatureValidation.revocationNextUpdate || signatureValidation.ocspNextUpdate;
+          const thisUpdateText = thisUpdate ? ` Atualização informada em ${thisUpdate}.` : '';
+          const nextUpdateText = nextUpdate ? ` Próxima atualização em ${nextUpdate}.` : '';
+          return ` Revogação: não revogado, por OCSP.${ocspStatus}${evidence}${fresh}${producedAt}${thisUpdateText}${nextUpdateText}`;
+        }
+
+        if (String(source).toUpperCase() === 'CRL' || String(source).toUpperCase() === 'LCR') {
+          const thisUpdate = signatureValidation.revocationThisUpdate || signatureValidation.crlThisUpdate;
+          const nextUpdate = signatureValidation.revocationNextUpdate || signatureValidation.crlNextUpdate;
+          const issuer = signatureValidation.crlIssuer ? ` Emissor da LCR: ${signatureValidation.crlIssuer}.` : '';
+          const thisUpdateText = thisUpdate ? ` LCR emitida em ${thisUpdate}.` : '';
+          const nextUpdateText = nextUpdate ? ` Próxima atualização em ${nextUpdate}.` : '';
+          return ` Revogação: não revogado, por LCR.${evidence}${fresh}${thisUpdateText}${nextUpdateText}${issuer}`;
+        }
+
+        return ` Revogação: não revogado${sourceText}.${evidence}${fresh}`;
       }
 
-      if (method === 'CRL' || method === 'LCR') {
-        const thisUpdate = signatureValidation.crlThisUpdate ? ` LCR emitida em ${signatureValidation.crlThisUpdate}` : '';
-        const nextUpdate = signatureValidation.crlNextUpdate ? `, com próxima atualização em ${signatureValidation.crlNextUpdate}` : '';
-        const issuer = signatureValidation.crlIssuer ? ` Emissor da LCR: ${signatureValidation.crlIssuer}.` : '';
-        return ` Consulta de revogação realizada por LCR, sem identificação de revogação.${thisUpdate}${nextUpdate}.${issuer}`;
+      if (status === 'indeterminate') {
+        const reason = signatureValidation?.revocationIndeterminateReason
+          ? ` Motivo técnico: ${signatureValidation.revocationIndeterminateReason}.`
+          : '';
+        return ` Revogação: indeterminada. Não foi possível concluir a situação de revogação pela fonte consultada.${reason}`;
       }
 
-      return ` Consulta de revogação realizada por ${signatureValidation.revocationMethod || 'método informado pelo validador'}, sem identificação de revogação.`;
+      if (signatureValidation?.revocationChecked !== true || status === 'not_checked') {
+        return ' Revogação: não consultada ou não concluída automaticamente.';
+      }
+
+      return '';
     }
 
     function formatSignatureTimestampInfo(signatureValidation) {
