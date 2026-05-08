@@ -2219,6 +2219,30 @@
       return `${cpf.slice(0, 3)}.***.***-${cpf.slice(9, 11)}`;
     }
 
+    function formatCertificateSerialColon(value) {
+      const raw = String(value || '').trim();
+      const hex = raw
+        .replace(/^0x/i, '')
+        .replace(/[^0-9a-f]/gi, '')
+        .toUpperCase();
+
+      if (!hex) return 'Não localizado';
+
+      return hex.match(/.{1,2}/g).join(':');
+    }
+
+    function formatCertificateSerialHex(value) {
+      const raw = String(value || '').trim();
+      const hex = raw
+        .replace(/^0x/i, '')
+        .replace(/[^0-9a-f]/gi, '')
+        .toLowerCase();
+
+      if (!hex) return 'Não localizado';
+
+      return `0x${hex}`;
+    }
+
     function formatDateBR(value) {
       if (!value) return 'Não localizada';
       const date = new Date(value);
@@ -2327,8 +2351,8 @@
 
       return {
         arquivo: basic?.name || selectedFile?.name || 'Não localizado',
-        numeroSerieCertificado: firstSignature?.certificateSerialNumber || firstSignature?.certificateSerialNumberHex || 'Não localizado',
-        numeroSerieCertificadoHex: firstSignature?.certificateSerialNumberHex || null,
+        numeroSerieCertificado: formatCertificateSerialColon(firstSignature?.certificateSerialNumber || firstSignature?.certificateSerialNumberHex),
+        numeroSerieCertificadoHex: formatCertificateSerialHex(firstSignature?.certificateSerialNumberHex || firstSignature?.certificateSerialNumber),
         emissorCertificado: firstSignature?.certificateIssuerName || firstSignature?.certificateIssuer || 'Não localizado',
         assinanteNome: extracted.nome || 'Não localizado',
         assinanteCpf: formatCpfMasked(extracted.cpf),
@@ -2352,7 +2376,7 @@
 
     function signaturePresentationText(data) {
       if (!data) return '';
-      return ` Arquivo: ${data.arquivo}. Número de série do certificado: ${data.numeroSerieCertificado}. Assinante: ${data.assinanteNome}. CPF: ${data.assinanteCpf}. Emissor do certificado: ${data.emissorCertificado}. Vigência do certificado: ${data.certificadoVigencia}. Documento assinado em: ${data.dataAssinatura}. ${data.signatureValidityStatusText} Data da validação: ${data.dataValidacao}. ${data.certificateStatusAtValidationText} ${data.revocationStatusText} ${data.timestampNote}`;
+      return ` Arquivo: ${data.arquivo}. Número de série do certificado: ${data.numeroSerieCertificado}. Equivalente hexadecimal: ${data.numeroSerieCertificadoHex}. Assinante: ${data.assinanteNome}. CPF: ${data.assinanteCpf}. Emissor do certificado: ${data.emissorCertificado}. Vigência do certificado: ${data.certificadoVigencia}. Documento assinado em: ${data.dataAssinatura}. ${data.signatureValidityStatusText} Data da validação: ${data.dataValidacao}. ${data.certificateStatusAtValidationText} ${data.revocationStatusText} ${data.timestampNote}`;
     }
 
     function signaturePresentationHtml(data) {
@@ -2361,6 +2385,7 @@
         <div class="signature-extra">
           <div><strong>Arquivo:</strong> ${escapeHtml(data.arquivo)}</div>
           <div><strong>Número de série do certificado:</strong> ${escapeHtml(data.numeroSerieCertificado)}</div>
+          <div><strong>Equivalente hexadecimal:</strong> ${escapeHtml(data.numeroSerieCertificadoHex)}</div>
           <div><strong>Assinante:</strong> ${escapeHtml(data.assinanteNome)}</div>
           <div><strong>CPF:</strong> ${escapeHtml(data.assinanteCpf)}</div>
           <div><strong>Emissor do certificado:</strong> ${escapeHtml(data.emissorCertificado)}</div>
