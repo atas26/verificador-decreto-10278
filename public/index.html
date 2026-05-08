@@ -772,6 +772,7 @@
           <div class="field">
             <label for="purpose">1. Escolha o perfil de análise antes do upload</label>
             <select id="purpose">
+              <option value="" selected>Selecione o perfil de análise</option>
               <option value="registro_imoveis">Documentos destinados aos Registros de Imóveis</option>
               <option value="tabelionato_notas">Documentos emitidos pelos Tabelionatos de Notas e Registros de Imóveis</option>
             </select>
@@ -993,10 +994,14 @@
     const BACKEND_SIGNATURE_ENDPOINT = window.SIGNATURE_ENDPOINT || '/api/validate-signature';
     const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 
-    els.dropzone.addEventListener('click', () => els.fileInput.click());
+    els.dropzone.addEventListener('click', () => {
+      if (!ensureAnalysisProfileSelected()) return;
+      els.fileInput.click();
+    });
     els.dropzone.addEventListener('keydown', event => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
+        if (!ensureAnalysisProfileSelected()) return;
         els.fileInput.click();
       }
     });
@@ -1011,12 +1016,16 @@
     els.dropzone.addEventListener('drop', event => {
       event.preventDefault();
       els.dropzone.classList.remove('dragover');
+      if (!ensureAnalysisProfileSelected()) return;
       const file = event.dataTransfer.files?.[0];
       setSelectedFile(file);
     });
 
     els.fileInput.addEventListener('change', event => setSelectedFile(event.target.files?.[0]));
-    els.purpose.addEventListener('change', updateProfileHelp);
+    els.purpose.addEventListener('change', () => {
+      updateProfileHelp();
+      els.analyzeBtn.disabled = !(selectedFile && hasSelectedAnalysisProfile());
+    });
     updateProfileHelp();
     els.analyzeBtn.addEventListener('click', analyzeSelectedFile);
     els.clearBtn.addEventListener('click', clearAll);
@@ -1035,12 +1044,38 @@
     }
 
     function getAnalysisProfile() {
-      return analysisProfiles[els.purpose.value] || analysisProfiles.registro_imoveis;
+      return analysisProfiles[els.purpose.value] || null;
+    }
+
+    function hasSelectedAnalysisProfile() {
+      return Boolean(getAnalysisProfile());
+    }
+
+    function ensureAnalysisProfileSelected() {
+      if (hasSelectedAnalysisProfile()) return true;
+      showProfileRequiredMessage();
+      return false;
+    }
+
+    function showProfileRequiredMessage() {
+      if (els.profileHelp) {
+        els.profileHelp.innerHTML = `
+          <div class="profile-help-title">Escolha o perfil de análise</div>
+          <p>Antes de enviar o arquivo, selecione o perfil adequado. Essa escolha define quais requisitos serão verificados pela ferramenta.</p>
+        `;
+      }
+      if (els.purpose) {
+        els.purpose.focus();
+      }
     }
 
     function updateProfileHelp() {
       if (!els.profileHelp) return;
       const profile = getAnalysisProfile();
+      if (!profile) {
+        showProfileRequiredMessage();
+        return;
+      }
       const applicable = profile.applicable.map(item => `<span class="scope-pill">${escapeHtml(item)}</span>`).join('');
       els.profileHelp.innerHTML = `
         <div class="profile-help-title">${escapeHtml(profile.title)}</div>
@@ -1051,6 +1086,14 @@
 
     function setSelectedFile(file) {
       if (!file) return;
+      if (!ensureAnalysisProfileSelected()) {
+        selectedFile = null;
+        els.fileInput.value = '';
+        els.fileName.textContent = '';
+        els.fileName.style.display = 'none';
+        els.analyzeBtn.disabled = true;
+        return;
+      }
       if (file.size > MAX_FILE_SIZE_BYTES) {
         selectedFile = null;
         els.fileInput.value = '';
@@ -1083,6 +1126,7 @@
 
     async function analyzeSelectedFile() {
       if (!selectedFile) return;
+      if (!ensureAnalysisProfileSelected()) return;
       els.analyzeBtn.disabled = true;
       els.analyzeBtn.classList.add('btn-loading');
       els.analyzeBtn.innerHTML = '<span class="button-spinner" aria-hidden="true"></span><span>Analisando</span><span class="loading-dots" aria-hidden="true"></span>';
