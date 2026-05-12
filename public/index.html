@@ -735,8 +735,197 @@
 
     .hidden { display: none !important; }
 
+
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .anchor-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      border-radius: 13px;
+      padding: 12px 15px;
+      font-size: 14px;
+      font-weight: 800;
+      text-decoration: none;
+      background: var(--blue);
+      color: #ffffff;
+      box-shadow: 0 12px 28px rgba(11, 95, 255, .22);
+    }
+
+    .anchor-btn:hover {
+      background: var(--blue-dark);
+      text-decoration: none;
+    }
+
+    .anchor-btn.secondary {
+      background: #ffffff;
+      color: var(--blue);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+
+    .content-section {
+      scroll-margin-top: 22px;
+      margin-bottom: 20px;
+    }
+
+    #perguntas-frequentes {
+      margin-top: 34px;
+    }
+
+    .content-card {
+      padding: 26px;
+    }
+
+    .section-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #eef4ff;
+      color: #174ea6;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .content-card h2 {
+      margin: 0 0 12px;
+      font-size: clamp(26px, 3.2vw, 38px);
+      line-height: 1.08;
+      letter-spacing: -0.045em;
+    }
+
+    .content-card > p {
+      margin: 0 0 16px;
+      max-width: 920px;
+      color: #3d4a5c;
+      font-size: 16px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .info-item {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #ffffff;
+      padding: 16px;
+      min-height: 150px;
+    }
+
+    .info-item h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      line-height: 1.3;
+      letter-spacing: -0.015em;
+    }
+
+    .info-item p {
+      margin: 0;
+      color: #475467;
+      font-size: 14px;
+    }
+
+    .steps-list,
+    .source-list {
+      margin: 14px 0 0;
+      padding-left: 20px;
+      color: #344054;
+      font-size: 15px;
+    }
+
+    .steps-list li,
+    .source-list li {
+      margin: 8px 0;
+    }
+
+    .faq-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .faq-list details {
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: #ffffff;
+      overflow: hidden;
+    }
+
+    .faq-list summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 15px 16px;
+      font-weight: 900;
+      color: #243044;
+    }
+
+    .faq-list summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .faq-list details[open] summary {
+      border-bottom: 1px solid var(--line);
+      background: #f7f9fc;
+    }
+
+    .faq-list p {
+      margin: 0;
+      padding: 14px 16px 16px;
+      color: #475467;
+      font-size: 14px;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      margin-top: 12px;
+    }
+
+    .visit {
+      position: fixed;
+      right: 14px;
+      bottom: 12px;
+      z-index: 40;
+      opacity: .58;
+      transition: opacity .2s ease;
+      font-size: 11px;
+      color: var(--muted);
+      background: rgba(255,255,255,.90);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 4px 7px;
+      line-height: 1;
+    }
+
+    .visit:hover {
+      opacity: .9;
+    }
+
     @media (max-width: 980px) {
       .hero, .main-grid, .form-row { grid-template-columns: 1fr; }
+      .info-grid { grid-template-columns: 1fr; }
+      .hero-actions { align-items: stretch; }
+      .anchor-btn { width: 100%; }
       .summary { grid-template-columns: 1fr; }
       .block-summary { grid-template-columns: 1fr; }
       .topbar { align-items: flex-start; flex-direction: column; }
@@ -753,6 +942,10 @@
         <h1>Triagem e validação de documentos eletrônicos.</h1>
         <p class="lead">Envie um PDF, escolha o perfil de análise e verifique formato, hash, conformidade PDF/A, assinatura digital ICP-Brasil e, quando aplicável, digitalização, imagem e metadados dos Anexos I e II, do Decreto nº 10.278/2020.</p>
         <div class="notice">O resultado é uma conferência automatizada do arquivo. Não substitui a qualificação notarial e registral nem os demais procedimentos de análise do documento eletrônico.</div>
+        <div class="hero-actions" aria-label="Ações rápidas">
+          <a class="anchor-btn" href="#ferramenta">Ir para a ferramenta</a>
+          <a class="anchor-btn secondary" href="#perguntas-frequentes">Ver perguntas frequentes</a>
+        </div>
       </div>
 
       <aside class="card hero-side">
@@ -771,8 +964,62 @@
       </aside>
     </section>
 
+
+    <section class="card content-card content-section" id="informacoes" aria-labelledby="titulo-informacoes">
+      <span class="section-kicker">Informações sobre a ferramenta</span>
+      <h2 id="titulo-informacoes">Verificação técnica de documentos em PDF</h2>
+      <p>O verificador auxilia a conferência inicial de documentos eletrônicos ou digitalizados, com leitura técnica do arquivo enviado pelo usuário. A análise mostra formato, tamanho, hash, PDF/A, assinatura digital ICP-Brasil e, conforme o perfil escolhido, requisitos técnicos ligados à digitalização, imagem e metadados.</p>
+      <div class="info-grid">
+        <article class="info-item">
+          <h3>O que a ferramenta faz</h3>
+          <p>Executa uma checagem automatizada do PDF e apresenta um relatório técnico preliminar, com resultado por requisito e orientação prática para correção ou conferência complementar.</p>
+        </article>
+        <article class="info-item">
+          <h3>Quando usar</h3>
+          <p>Use antes de encaminhar documentos eletrônicos ou digitalizados para análise notarial, registral, imobiliária ou documental, especialmente quando houver exigência de PDF/A, assinatura digital ou metadados.</p>
+        </article>
+        <article class="info-item">
+          <h3>Como interpretar o resultado</h3>
+          <p>O resultado “Conforme” indica compatibilidade técnica preliminar. “Não verificável” indica dependência de validação externa. “Não conforme” indica ponto técnico que deve ser revisto antes do uso.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="card content-card content-section" id="como-usar" aria-labelledby="titulo-como-usar">
+      <span class="section-kicker">Como usar</span>
+      <h2 id="titulo-como-usar">Fluxo recomendado de análise</h2>
+      <ol class="steps-list">
+        <li>Escolha o perfil de análise antes de selecionar o arquivo.</li>
+        <li>Envie somente arquivo em PDF, no limite indicado pela própria página.</li>
+        <li>Clique em “Analisar arquivo” e aguarde o relatório técnico preliminar.</li>
+        <li>Leia a síntese por blocos e, se necessário, abra os requisitos detalhados.</li>
+        <li>Use “Copiar relatório” ou “Baixar relatório TXT” para registrar o resultado.</li>
+      </ol>
+    </section>
+
+    <section class="card content-card content-section" id="criterios-fontes" aria-labelledby="titulo-criterios-fontes">
+      <span class="section-kicker">Critérios e fontes</span>
+      <h2 id="titulo-criterios-fontes">Base técnica considerada</h2>
+      <p>A ferramenta combina leitura local do arquivo no navegador com serviços técnicos de validação quando disponíveis no ambiente da aplicação. O relatório é organizado para indicar o que foi verificado automaticamente e o que depende de conferência externa.</p>
+      <ul class="source-list">
+        <li>MP nº 2.200-2/2001, para a Infraestrutura de Chaves Públicas Brasileira.</li>
+        <li>Lei nº 14.063/2020, para assinaturas eletrônicas em interações com entes públicos.</li>
+        <li>Decreto nº 10.278/2020, anexos I e II, para requisitos de digitalização e metadados.</li>
+        <li>Provimento CNJ nº 149/2023, para atos, documentos e práticas do foro extrajudicial.</li>
+        <li>Validação PDF/A por serviço técnico próprio, quando disponível no backend.</li>
+        <li>Validação de assinatura digital por serviço técnico próprio, quando disponível no backend.</li>
+      </ul>
+    </section>
+
+    <section class="card content-card content-section" id="limites" aria-labelledby="titulo-limites">
+      <span class="section-kicker">Limites da ferramenta</span>
+      <h2 id="titulo-limites">Conferência automatizada não substitui análise profissional</h2>
+      <p>O verificador não confirma a suficiência jurídica do título, a legitimidade do assinante, a representação das partes, a correspondência integral com eventual documento físico, a regularidade do negócio jurídico ou a aceitação do documento por órgão público, tabelionato, registro de imóveis ou outro destinatário.</p>
+      <p>A página deve ser usada como apoio técnico inicial. O resultado final depende da finalidade do documento, das normas aplicáveis, da política do órgão recebedor e da qualificação feita pelo profissional responsável.</p>
+    </section>
+
     <main class="main-grid">
-      <section class="card panel upload-panel">
+      <section class="card panel upload-panel" id="ferramenta">
         <div class="form-row">
           <div class="field">
             <label for="purpose">1. Escolha o perfil de análise antes do upload</label>
@@ -874,10 +1121,48 @@
       </section>
     </main>
 
+    <section class="card content-card content-section" id="perguntas-frequentes" aria-labelledby="titulo-faq">
+      <span class="section-kicker">Perguntas frequentes</span>
+      <h2 id="titulo-faq">Dúvidas comuns sobre o verificador</h2>
+      <div class="faq-list">
+        <details>
+          <summary>O resultado substitui a análise do tabelião ou do registrador?</summary>
+          <p>Não. O resultado é técnico e preliminar. A qualificação notarial, registral ou jurídica permanece necessária quando o documento for usado em ato formal.</p>
+        </details>
+        <details>
+          <summary>O arquivo enviado fica armazenado?</summary>
+          <p>A página informa que o arquivo não é salvo e que o tratamento fica limitado aos dados técnicos necessários à conferência automatizada. A validação pode depender dos serviços técnicos configurados no backend da aplicação.</p>
+        </details>
+        <details>
+          <summary>O que significa “Não verificável”?</summary>
+          <p>Significa que a ferramenta não conseguiu concluir automaticamente aquele requisito. Isso pode ocorrer por indisponibilidade de serviço externo, estrutura interna do PDF, ausência de metadados legíveis ou necessidade de conferência manual.</p>
+        </details>
+        <details>
+          <summary>A ferramenta confirma se o assinante tinha poderes?</summary>
+          <p>Não. A validação técnica pode verificar assinatura digital, cadeia ICP-Brasil, revogação e integridade quando o backend estiver disponível. Poderes, representação e legitimidade dependem de análise documental própria.</p>
+        </details>
+        <details>
+          <summary>Todo PDF/A será aceito por órgão público ou registro?</summary>
+          <p>Não necessariamente. A conformidade técnica do PDF/A é apenas um dos requisitos possíveis. O órgão destinatário pode exigir outros elementos, documentos complementares ou validação em sistema próprio.</p>
+        </details>
+      </div>
+    </section>
+
     <footer class="footer">
-      Projeto apoiado por <a href="https://escriturapublica.substack.com" target="_blank" rel="noopener noreferrer">Escritura Pública</a> e <a href="https://www.atesta.com.br" target="_blank" rel="noopener noreferrer">Atesta</a>. Versão beta - 2026. Fundamento legal: MP nº 2.200-2/01, Lei nº 14.063/2020, Decreto nº 10.278/2020, anexos I e II e Prov. CNJ nº 149/2023.
+      <div>Projeto apoiado por <a href="https://escriturapublica.substack.com" target="_blank" rel="noopener noreferrer">Escritura Pública</a> e <a href="https://www.atesta.com.br" target="_blank" rel="noopener noreferrer">Atesta</a>. Versão beta - 2026.</div>
+      <div>Fundamento legal: MP nº 2.200-2/01, Lei nº 14.063/2020, Decreto nº 10.278/2020, anexos I e II e Prov. CNJ nº 149/2023.</div>
+      <nav class="footer-links" aria-label="Links institucionais">
+        <a href="https://portalnotarial.com.br/">Portal Notarial</a>
+        <a href="https://portalnotarial.com.br/sobre.html">Sobre</a>
+        <a href="https://portalnotarial.com.br/contato.html">Contato</a>
+        <a href="https://portalnotarial.com.br/politica-de-privacidade.html">Privacidade</a>
+        <a href="https://portalnotarial.com.br/termos-de-uso.html">Termos</a>
+        <a href="https://portalnotarial.com.br/aviso-legal.html">Aviso legal</a>
+      </nav>
     </footer>
   </div>
+
+  <span class="visit" id="visitCounterText" aria-label="Contador global de visitas da página" title="Visitas: 0">Visitas: 0</span>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
@@ -3262,6 +3547,32 @@
       els.metricStatus.textContent = 'Erro';
       els.resultsBody.innerHTML = '';
     }
+  </script>
+
+
+  <script>
+    (function setupCounter() {
+      const contador = document.getElementById('visitCounterText');
+      if (!contador) return;
+
+      const namespace = 'portalnotarial';
+      const nomeContador = 'verificador-documentos';
+
+      fetch(`https://api.counterapi.dev/v1/${namespace}/${nomeContador}/up`, { cache: 'no-store' })
+        .then((resposta) => {
+          if (!resposta.ok) throw new Error('Falha ao consultar contador.');
+          return resposta.json();
+        })
+        .then((dados) => {
+          const total = Number(dados.count ?? dados.data ?? dados.value);
+          contador.textContent = Number.isFinite(total) ? `Visitas: ${total}` : 'Visitas: 0';
+          contador.title = contador.textContent;
+        })
+        .catch(() => {
+          contador.textContent = 'Visitas: 0';
+          contador.title = 'Visitas: 0';
+        });
+    })();
   </script>
 </body>
 </html>
