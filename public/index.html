@@ -945,7 +945,7 @@
             <li><span class="dot"></span><span>Validação PDF/A.</span></li>
             <li><span class="dot"></span><span>Detecção técnica de assinatura digital embutida em PDF.</span></li>
             <li><span class="dot"></span><span>Checagem da assinatura digital ICP-Brasil.</span></li>
-            <li><span class="dot"></span><span>Documentos destinados aos Registros de Imóveis: inclui PDF-A, assinatura digital ICP-Brasil, digitalização, imagem e metadados dos Anexos I e II.</span></li>
+            <li><span class="dot"></span><span>Documentos destinados aos Registros de Imóveis: inclui PDF-A, assinatura digital ICP-Brasil ou assinatura gov.br/e-gov, digitalização, imagem e metadados dos Anexos I e II.</span></li>
             <li><span class="dot"></span><span>Documentos emitidos pelos Tabelionatos de Notas e Registros de Imóveis: inclui PDF/A e assinatura digital ICP-Brasil do delegatário, substituto ou preposto.</span></li>
           </ul>
         </div>
@@ -2577,6 +2577,93 @@
       return date.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     }
 
+    function collectSignatureValidationText(signatureValidation) {
+      const parts = [];
+      const add = value => {
+        if (value === null || value === undefined) return;
+        if (Array.isArray(value)) {
+          value.forEach(add);
+          return;
+        }
+        if (typeof value === 'object') {
+          Object.values(value).forEach(add);
+          return;
+        }
+        parts.push(String(value));
+      };
+      add(signatureValidation);
+      return parts.join(' ');
+    }
+
+    function isGovBrSignatureValidation(signatureValidation) {
+      if (!signatureValidation) return false;
+
+      if (
+        signatureValidation.govBr === true ||
+        signatureValidation.govBrAdvanced === true ||
+        signatureValidation.govBrIssuerDetected === true ||
+        String(signatureValidation.govBrValidationStatus || '').toLowerCase().includes('govbr') ||
+        String(signatureValidation.govBrValidationStatus || '').toLowerCase().includes('gov_br') ||
+        String(signatureValidation.result || '').toLowerCase().includes('govbr') ||
+        String(signatureValidation.result || '').toLowerCase().includes('gov_br')
+      ) {
+        return true;
+      }
+
+      const text = normalizeForSearch(collectSignatureValidationText(signatureValidation));
+      return text.includes('gov br') ||
+        text.includes('govbr') ||
+        text.includes('gov.br') ||
+        text.includes('e gov') ||
+        text.includes('assinatura gov') ||
+        text.includes('governo federal do brasil') ||
+        text.includes('ac final do governo federal') ||
+        text.includes('ac intermediaria do governo federal');
+    }
+
+    function isGovBrTechnicallyApprovedForRegistroImoveis(purpose, signatureValidation) {
+      if (purpose !== 'registro_imoveis') return false;
+      if (!isGovBrSignatureValidation(signatureValidation)) return false;
+      if (signatureValidation?.hasSignature !== true) return false;
+
+      const result = String(signatureValidation?.result || '').toLowerCase();
+      const text = normalizeForSearch(collectSignatureValidationText(signatureValidation));
+
+      const hasPositiveGovBrSignal =
+        signatureValidation?.govBr === true ||
+        signatureValidation?.govBrAdvanced === true ||
+        result.includes('valid_govbr') ||
+        result.includes('valid_gov_br') ||
+        text.includes('assinatura gov.br/e-gov validada tecnicamente') ||
+        text.includes('gov.br/e-gov validada tecnicamente') ||
+        text.includes('assinatura gov br e gov validada tecnicamente') ||
+        text.includes('assinatura govbr e gov validada tecnicamente') ||
+        text.includes('assinatura gov br validada tecnicamente') ||
+        text.includes('assinatura govbr validada tecnicamente') ||
+        text.includes('gov br e gov validada tecnicamente') ||
+        text.includes('govbr e gov validada tecnicamente') ||
+        text.includes('validada tecnicamente') ||
+        text.includes('integridade criptografica confirmada');
+
+      const hasInvalidSignal =
+        signatureValidation?.revoked === true ||
+        signatureValidation?.signatureIntegrityValid === false ||
+        signatureValidation?.byteRangeValid === false ||
+        signatureValidation?.finalDocumentAcceptable === false ||
+        result === 'certificate_revoked' ||
+        result === 'invalid_signature' ||
+        result === 'invalid_signature_byte_range' ||
+        result === 'signature_valid_but_pdf_not_fully_covered';
+
+      const revocationOk = signatureValidation?.revocationChecked === true && signatureValidation?.revoked === false;
+      const finalDocumentOk = signatureValidation?.finalDocumentCovered === true ||
+        signatureValidation?.finalDocumentAcceptable === true ||
+        signatureValidation?.finalDocumentAcceptable === undefined ||
+        signatureValidation?.finalDocumentAcceptable === null;
+
+      return hasPositiveGovBrSignal && !hasInvalidSignal && revocationOk && finalDocumentOk;
+    }
+
     function buildSignaturePresentation(signatureValidation, basic) {
       const firstSignature = Array.isArray(signatureValidation?.signatures) && signatureValidation.signatures.length
         ? signatureValidation.signatures[0]
@@ -2669,20 +2756,7 @@
         revocationStatusClass = 'signature-validity-warning';
       }
 
-      const issuerText = [
-        firstSignature?.certificateIssuerName,
-        firstSignature?.certificateIssuer,
-        firstSignature?.certificateSubject,
-        signatureValidation?.govBrIssuerMatchedBy,
-        signatureValidation?.govBrMessage
-      ].filter(Boolean).join(' ');
-
-      const isGovBrSignature = Boolean(
-        signatureValidation?.govBr === true ||
-        firstSignature?.govBr === true ||
-        /gov-br/i.test(issuerText) ||
-        /governo federal do brasil/i.test(issuerText)
-      );
+      const isGovBrSignature = isGovBrSignatureValidation(signatureValidation);
 
       return {
         arquivo: basic?.name || selectedFile?.name || 'Não localizado',
@@ -2814,15 +2888,7 @@
               return;
             }
 
-            const assinaturaGovBrConforme =
-              purpose === 'registro_imoveis' &&
-              signatureValidation.govBr === true &&
-              signatureValidation.govBrAdvanced === true &&
-              signatureValidation.valid === true &&
-              signatureValidation.signatureIntegrityValid === true &&
-              signatureValidation.revocationChecked === true &&
-              signatureValidation.revoked === false &&
-              documentoFinalAceitavel;
+            const assinaturaGovBrConforme = isGovBrTechnicallyApprovedForRegistroImoveis(purpose, signatureValidation);
 
             if (assinaturaGovBrConforme) {
               const govBrMessage = signatureValidation.govBrMessage || signatureValidation.message || 'Assinatura gov.br/e-gov validada tecnicamente.';
@@ -3449,7 +3515,7 @@
       lines.push('- A conformidade PDF/A é verificada tecnicamente pelo veraPDF, mas a adequação do documento ao caso concreto depende da finalidade de uso.');
       lines.push('- A assinatura digital é verificada por serviço técnico próprio, com análise do padrão PAdES, cadeia ICP-Brasil, revogação por OCSP ou LCR, DSS e carimbo do tempo quando disponível.');
       lines.push('- A correspondência integral com o original físico, a autoria material e a suficiência dos metadados podem depender de conferência externa ou sistema de gestão documental.');
-      lines.push('- O perfil Documentos destinados aos Registros de Imóveis considera PDF-A, assinatura digital ICP-Brasil, digitalização, imagem e metadados dos Anexos I e II. O perfil Documentos emitidos pelos Tabelionatos de Notas e Registros de Imóveis considera PDF/A e assinatura digital ICP-Brasil do delegatário, substituto ou preposto.');
+      lines.push('- O perfil Documentos destinados aos Registros de Imóveis considera PDF-A, assinatura digital ICP-Brasil ou assinatura gov.br/e-gov, digitalização, imagem e metadados dos Anexos I e II. O perfil Documentos emitidos pelos Tabelionatos de Notas e Registros de Imóveis considera PDF/A e assinatura digital ICP-Brasil do delegatário, substituto ou preposto.');
       lines.push('');
       lines.push('Observação: relatório automatizado e preliminar. Não substitui a qualificação notarial e registral nem os demais procedimentos de análise do documento eletrônico.');
       return lines.join('\n');
