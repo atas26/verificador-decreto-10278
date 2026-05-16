@@ -2655,13 +2655,26 @@
         result === 'invalid_signature_byte_range' ||
         result === 'signature_valid_but_pdf_not_fully_covered';
 
-      const revocationOk = signatureValidation?.revocationChecked === true && signatureValidation?.revoked === false;
+      const revocationOk =
+        (signatureValidation?.revocationChecked === true && signatureValidation?.revoked === false) ||
+        text.includes('revogacao realizada sem identificacao de revogacao') ||
+        text.includes('consulta de revogacao realizada sem identificacao de revogacao') ||
+        text.includes('nao revogado') ||
+        text.includes('não revogado');
+
+      const integrityOk =
+        signatureValidation?.signatureIntegrityValid === true ||
+        signatureValidation?.valid === true ||
+        text.includes('integridade criptografica confirmada') ||
+        text.includes('integridade criptográfica confirmada') ||
+        text.includes('validada tecnicamente');
+
       const finalDocumentOk = signatureValidation?.finalDocumentCovered === true ||
         signatureValidation?.finalDocumentAcceptable === true ||
         signatureValidation?.finalDocumentAcceptable === undefined ||
         signatureValidation?.finalDocumentAcceptable === null;
 
-      return hasPositiveGovBrSignal && !hasInvalidSignal && revocationOk && finalDocumentOk;
+      return hasPositiveGovBrSignal && !hasInvalidSignal && revocationOk && integrityOk && finalDocumentOk;
     }
 
     function buildSignaturePresentation(signatureValidation, basic) {
@@ -2857,6 +2870,22 @@
               resultado === 'valid_icp_brasil_chain_crl_with_permitted_incremental_update' ||
               (assinaturaComCadeiaRevogacao && documentoFinalAceitavel);
 
+            const assinaturaGovBrConforme = isGovBrTechnicallyApprovedForRegistroImoveis(purpose, signatureValidation);
+
+            if (assinaturaGovBrConforme) {
+              const govBrMessage = signatureValidation.govBrMessage || signatureValidation.message || 'Assinatura gov.br/e-gov validada tecnicamente.';
+              const govBrGuidance = `${govBrMessage}${standard}${level}${signatureContext}${signers}${revocationInfo}${timestampInfo}${warnings} Classificação gov.br/e-gov em trilha própria, sem alterar a validação ICP-Brasil. A classificação não substitui a análise jurídica sobre a suficiência da assinatura para a finalidade do documento.`;
+
+              details.push({
+                req: 'Assinatura gov.br/e-gov',
+                status: 'ok',
+                result: 'Assinatura gov.br/e-gov aprovada tecnicamente',
+                guidance: govBrGuidance,
+                signaturePresentation
+              });
+              return;
+            }
+
             if (assinaturaConforme) {
               const hasDss =
                 resultado === 'valid_icp_brasil_chain_crl_with_permitted_incremental_update' ||
@@ -2883,22 +2912,6 @@
                 status: 'ok',
                 result: 'Assinatura aprovada',
                 guidance: `${guidanceOk} Classificação técnica: ${classification.replace('Classificação técnica ', '')}.`,
-                signaturePresentation
-              });
-              return;
-            }
-
-            const assinaturaGovBrConforme = isGovBrTechnicallyApprovedForRegistroImoveis(purpose, signatureValidation);
-
-            if (assinaturaGovBrConforme) {
-              const govBrMessage = signatureValidation.govBrMessage || signatureValidation.message || 'Assinatura gov.br/e-gov validada tecnicamente.';
-              const govBrGuidance = `${govBrMessage}${standard}${level}${signatureContext}${signers}${revocationInfo}${timestampInfo}${warnings} Classificação gov.br/e-gov em trilha própria, sem alterar a validação ICP-Brasil. A classificação não substitui a análise jurídica sobre a suficiência da assinatura para a finalidade do documento.`;
-
-              details.push({
-                req: 'Assinatura digital ICP-Brasil ou assinatura gov.br/e-gov',
-                status: 'ok',
-                result: 'Assinatura gov.br/e-gov aprovada tecnicamente',
-                guidance: govBrGuidance,
                 signaturePresentation
               });
               return;
@@ -3327,7 +3340,7 @@
 
     function buildBlockSummaries(details, profile) {
       const formatItem = details.find(item => item.req === 'Formato PDF/A' || item.req === 'Formato exigido');
-      const signatureItem = details.find(item => item.req === 'Assinatura digital ICP-Brasil' || item.req === 'Assinatura digital ICP-Brasil ou assinatura gov.br/e-gov');
+      const signatureItem = details.find(item => String(item.req || '').includes('Assinatura digital ICP-Brasil') || String(item.req || '').includes('Assinatura gov.br/e-gov'));
       const natureItem = details.find(item => item.req === 'Natureza técnica do PDF');
       const resolutionItem = details.find(item => item.req.startsWith('Resolução mínima'));
       const colorItem = details.find(item => item.req.startsWith('Cor esperada'));
