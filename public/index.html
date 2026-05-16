@@ -2669,6 +2669,21 @@
         revocationStatusClass = 'signature-validity-warning';
       }
 
+      const issuerText = [
+        firstSignature?.certificateIssuerName,
+        firstSignature?.certificateIssuer,
+        firstSignature?.certificateSubject,
+        signatureValidation?.govBrIssuerMatchedBy,
+        signatureValidation?.govBrMessage
+      ].filter(Boolean).join(' ');
+
+      const isGovBrSignature = Boolean(
+        signatureValidation?.govBr === true ||
+        firstSignature?.govBr === true ||
+        /gov-br/i.test(issuerText) ||
+        /governo federal do brasil/i.test(issuerText)
+      );
+
       return {
         arquivo: basic?.name || selectedFile?.name || 'Não localizado',
         numeroSerieCertificado: formatCertificateSerialColon(firstSignature?.certificateSerialNumber || firstSignature?.certificateSerialNumberHex),
@@ -2676,6 +2691,8 @@
         emissorCertificado: firstSignature?.certificateIssuerName || firstSignature?.certificateIssuer || 'Não localizado',
         assinanteNome: extracted.nome || 'Não localizado',
         assinanteCpf: formatCpfMasked(extracted.cpf),
+        isGovBrSignature,
+        govBrLevelText: 'Prata ou ouro exigido pelo serviço gov.br. Nível exato não identificável no PDF.',
         certificadoVigencia: certificateValidity,
         dataAssinatura: formatDateTimeBR(firstSignature?.signDate),
         dataValidacao: formatDateTimeBR(validationDate.toISOString()),
@@ -2696,18 +2713,24 @@
 
     function signaturePresentationText(data) {
       if (!data) return '';
-      return ` Arquivo: ${data.arquivo}. Número de série do certificado: ${data.numeroSerieCertificado}. Equivalente hexadecimal: ${data.numeroSerieCertificadoHex}. Assinante: ${data.assinanteNome}. CPF: ${data.assinanteCpf}. Emissor do certificado: ${data.emissorCertificado}. Vigência do certificado: ${data.certificadoVigencia}. Documento assinado em: ${data.dataAssinatura}. ${data.signatureValidityStatusText} Data da validação: ${data.dataValidacao}. ${data.certificateStatusAtValidationText} ${data.revocationStatusText} ${data.timestampNote}`;
+      const identityText = data.isGovBrSignature
+        ? `Nível gov.br: ${data.govBrLevelText}`
+        : `CPF: ${data.assinanteCpf}`;
+      return ` Arquivo: ${data.arquivo}. Número de série do certificado: ${data.numeroSerieCertificado}. Equivalente hexadecimal: ${data.numeroSerieCertificadoHex}. Assinante: ${data.assinanteNome}. ${identityText}. Emissor do certificado: ${data.emissorCertificado}. Vigência do certificado: ${data.certificadoVigencia}. Documento assinado em: ${data.dataAssinatura}. ${data.signatureValidityStatusText} Data da validação: ${data.dataValidacao}. ${data.certificateStatusAtValidationText} ${data.revocationStatusText} ${data.timestampNote}`;
     }
 
     function signaturePresentationHtml(data) {
       if (!data) return '';
+      const identityLine = data.isGovBrSignature
+        ? `<div><strong>Nível gov.br:</strong> ${escapeHtml(data.govBrLevelText)}</div>`
+        : `<div><strong>CPF:</strong> ${escapeHtml(data.assinanteCpf)}</div>`;
       return `
         <div class="signature-extra">
           <div><strong>Arquivo:</strong> ${escapeHtml(data.arquivo)}</div>
           <div><strong>Número de série do certificado:</strong> ${escapeHtml(data.numeroSerieCertificado)}</div>
           <div><strong>Equivalente hexadecimal:</strong> ${escapeHtml(data.numeroSerieCertificadoHex)}</div>
           <div><strong>Assinante:</strong> ${escapeHtml(data.assinanteNome)}</div>
-          <div><strong>CPF:</strong> ${escapeHtml(data.assinanteCpf)}</div>
+          ${identityLine}
           <div><strong>Emissor do certificado:</strong> ${escapeHtml(data.emissorCertificado)}</div>
           <div><strong>Vigência do certificado:</strong> ${escapeHtml(data.certificadoVigencia)}</div>
           <div><strong>Documento assinado em:</strong> ${escapeHtml(data.dataAssinatura)}</div>
