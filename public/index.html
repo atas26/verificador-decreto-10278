@@ -1224,8 +1224,8 @@
         shortLabel: 'RI',
         requiresImageAndMetadata: true,
         title: 'Perfil: Documentos destinados aos Registros de Imóveis',
-        description: 'Checagem de documentos particulares digitalizados por particulares. O resultado considera PDF-A, assinatura digital ICP-Brasil, digitalização, imagem e metadados dos Anexos I e II, em conformidade com o Decreto nº 10.278/2020.',
-        applicable: ['PDF-A', 'Assinatura digital ICP-Brasil', 'Digitalização', 'Imagem', 'Metadados dos Anexos I e II'],
+        description: 'Checagem de documentos particulares digitalizados por particulares. O resultado considera PDF-A, assinatura digital ICP-Brasil ou assinatura gov.br/e-gov, digitalização, imagem e metadados dos Anexos I e II, em conformidade com o Decreto nº 10.278/2020.',
+        applicable: ['PDF-A', 'Assinatura digital ICP-Brasil ou gov.br/e-gov', 'Digitalização', 'Imagem', 'Metadados dos Anexos I e II'],
         notComputed: []
       },
       tabelionato_notas: {
@@ -2791,6 +2791,30 @@
               return;
             }
 
+            const assinaturaGovBrConforme =
+              purpose === 'registro_imoveis' &&
+              signatureValidation.govBr === true &&
+              signatureValidation.govBrAdvanced === true &&
+              signatureValidation.valid === true &&
+              signatureValidation.signatureIntegrityValid === true &&
+              signatureValidation.revocationChecked === true &&
+              signatureValidation.revoked === false &&
+              documentoFinalAceitavel;
+
+            if (assinaturaGovBrConforme) {
+              const govBrMessage = signatureValidation.govBrMessage || signatureValidation.message || 'Assinatura gov.br/e-gov validada tecnicamente.';
+              const govBrGuidance = `${govBrMessage}${standard}${level}${signatureContext}${signers}${revocationInfo}${timestampInfo}${warnings} Classificação gov.br/e-gov em trilha própria, sem alterar a validação ICP-Brasil. A classificação não substitui a análise jurídica sobre a suficiência da assinatura para a finalidade do documento.`;
+
+              details.push({
+                req: 'Assinatura digital ICP-Brasil ou assinatura gov.br/e-gov',
+                status: 'ok',
+                result: 'Assinatura gov.br/e-gov aprovada tecnicamente',
+                guidance: govBrGuidance,
+                signaturePresentation
+              });
+              return;
+            }
+
             if (resultado === 'certificate_revoked' || signatureValidation.revoked === true) {
               details.push({
                 req: 'Assinatura digital ICP-Brasil',
@@ -3214,7 +3238,7 @@
 
     function buildBlockSummaries(details, profile) {
       const formatItem = details.find(item => item.req === 'Formato PDF/A' || item.req === 'Formato exigido');
-      const signatureItem = details.find(item => item.req === 'Assinatura digital ICP-Brasil');
+      const signatureItem = details.find(item => item.req === 'Assinatura digital ICP-Brasil' || item.req === 'Assinatura digital ICP-Brasil ou assinatura gov.br/e-gov');
       const natureItem = details.find(item => item.req === 'Natureza técnica do PDF');
       const resolutionItem = details.find(item => item.req.startsWith('Resolução mínima'));
       const colorItem = details.find(item => item.req.startsWith('Cor esperada'));
@@ -3314,11 +3338,14 @@
       }
 
       if (signatureItem.status === 'ok') {
+        const govBrApproved = rawResult.toLowerCase().includes('gov.br') || rawResult.toLowerCase().includes('e-gov');
         return {
           ...base,
           status: 'ok',
-          result: 'Assinatura aprovada',
-          text: 'A assinatura foi conferida, com cadeia ICP-Brasil, revogação e classificação técnica quando disponíveis.'
+          result: govBrApproved ? rawResult : 'Assinatura aprovada',
+          text: govBrApproved
+            ? 'A assinatura gov.br/e-gov foi conferida tecnicamente em trilha própria, sem alterar a validação ICP-Brasil.'
+            : 'A assinatura foi conferida, com cadeia ICP-Brasil, revogação e classificação técnica quando disponíveis.'
         };
       }
 
