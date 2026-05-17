@@ -3447,7 +3447,12 @@
 
     function buildBlockSummaries(details, profile) {
       const formatItem = details.find(item => item.req === 'Formato PDF/A' || item.req === 'Formato exigido');
-      const signatureItem = details.find(item => String(item.req || '').includes('Assinatura digital ICP-Brasil') || String(item.req || '').includes('Assinatura gov.br/e-gov'));
+      const signatureItem = details.find(item => {
+        const req = String(item.req || '');
+        return req.includes('Assinatura digital ICP-Brasil')
+          || req.includes('Assinatura gov.br/e-gov')
+          || req.includes('Assinaturas gov.br/e-gov');
+      });
       const natureItem = details.find(item => item.req === 'Natureza técnica do PDF');
       const resolutionItem = details.find(item => item.req.startsWith('Resolução mínima'));
       const colorItem = details.find(item => item.req.startsWith('Cor esperada'));
