@@ -1470,7 +1470,7 @@
         renderReport({ basic, rule, details, totals, hash, profile });
       } catch (error) {
         console.error(error);
-        showError('Não foi possível analisar o arquivo. Verifique se o arquivo não está corrompido e tente novamente.');
+        showError(`Não foi possível analisar o arquivo. Detalhe técnico: ${error?.message || error || 'erro não informado'}`);
       } finally {
         els.analyzeBtn.disabled = false;
         els.analyzeBtn.classList.remove('btn-loading');
@@ -2626,6 +2626,17 @@
       if (!isGovBrSignatureValidation(signatureValidation)) return false;
       if (signatureValidation?.hasSignature !== true) return false;
 
+      const govBrSignatureCount = Number(signatureValidation?.govBrSignatureCount || 0);
+      const govBrValidSignatureCount = Number(signatureValidation?.govBrValidSignatureCount || 0);
+      const govBrInvalidSignatureCount = Number(signatureValidation?.govBrInvalidSignatureCount || 0);
+      const govBrIndeterminateSignatureCount = Number(signatureValidation?.govBrIndeterminateSignatureCount || 0);
+
+      if (govBrSignatureCount > 0) {
+        return govBrValidSignatureCount === govBrSignatureCount &&
+          govBrInvalidSignatureCount === 0 &&
+          govBrIndeterminateSignatureCount === 0;
+      }
+
       const result = String(signatureValidation?.result || '').toLowerCase();
       const text = normalizeForSearch(collectSignatureValidationText(signatureValidation));
 
@@ -2651,6 +2662,7 @@
         signatureValidation?.byteRangeValid === false ||
         signatureValidation?.finalDocumentAcceptable === false ||
         result === 'certificate_revoked' ||
+        result === 'govbr_signature_invalid' ||
         result === 'invalid_signature' ||
         result === 'invalid_signature_byte_range' ||
         result === 'signature_valid_but_pdf_not_fully_covered';
@@ -2678,157 +2690,198 @@
     }
 
     function buildSignaturePresentation(signatureValidation, basic) {
-      const firstSignature = Array.isArray(signatureValidation?.signatures) && signatureValidation.signatures.length
-        ? signatureValidation.signatures[0]
-        : null;
+      const signatures = Array.isArray(signatureValidation?.signatures) && signatureValidation.signatures.length
+        ? signatureValidation.signatures
+        : [null];
 
-      const extracted = extractNameAndCpfFromSubject(firstSignature?.certificateSubject || '');
-
-      const certificateValidity = firstSignature?.certificateNotBefore && firstSignature?.certificateNotAfter
-        ? `${formatDateBR(firstSignature.certificateNotBefore)} a ${formatDateBR(firstSignature.certificateNotAfter)}`
-        : 'Não localizada';
-
-      const signDate = firstSignature?.signDate ? new Date(firstSignature.signDate) : null;
-      const notBefore = firstSignature?.certificateNotBefore ? new Date(firstSignature.certificateNotBefore) : null;
-      const notAfter = firstSignature?.certificateNotAfter ? new Date(firstSignature.certificateNotAfter) : null;
       const validationDate = new Date();
-
-      const hasComparableSignatureDate = Boolean(
-        signDate && notBefore && notAfter &&
-        !Number.isNaN(signDate.getTime()) &&
-        !Number.isNaN(notBefore.getTime()) &&
-        !Number.isNaN(notAfter.getTime())
-      );
-
-      const signedWithinCertificateValidity = Boolean(
-        hasComparableSignatureDate &&
-        signDate >= notBefore &&
-        signDate <= notAfter
-      );
-
-      let signatureValidityStatusText = 'Não foi possível comparar a data da assinatura com a vigência do certificado.';
-      let signatureValidityStatusClass = 'signature-validity-warning';
-      if (hasComparableSignatureDate && signedWithinCertificateValidity) {
-        signatureValidityStatusText = 'Assinado dentro do período de validade do certificado, conforme data extraída da assinatura.';
-        signatureValidityStatusClass = 'signature-validity-good';
-      } else if (hasComparableSignatureDate) {
-        signatureValidityStatusText = 'Data da assinatura fora do período de validade do certificado.';
-        signatureValidityStatusClass = 'signature-validity-bad';
-      }
-
-      const hasComparableValidationDate = Boolean(
-        notBefore && notAfter &&
-        !Number.isNaN(notBefore.getTime()) &&
-        !Number.isNaN(notAfter.getTime()) &&
-        !Number.isNaN(validationDate.getTime())
-      );
-
-      const certificateExpiredAtValidation = Boolean(hasComparableValidationDate && validationDate > notAfter);
-      const certificateNotYetValidAtValidation = Boolean(hasComparableValidationDate && validationDate < notBefore);
-
-      let certificateStatusAtValidationText = 'Situação do certificado na data da validação: não verificável.';
-      let certificateStatusAtValidationClass = 'signature-validity-warning';
-      if (certificateExpiredAtValidation) {
-        certificateStatusAtValidationText = 'Certificado expirado na data da validação.';
-        certificateStatusAtValidationClass = 'signature-validity-expired';
-      } else if (certificateNotYetValidAtValidation) {
-        certificateStatusAtValidationText = 'Certificado ainda não vigente na data da validação.';
-        certificateStatusAtValidationClass = 'signature-validity-bad';
-      } else if (hasComparableValidationDate) {
-        certificateStatusAtValidationText = 'Certificado vigente na data da validação.';
-        certificateStatusAtValidationClass = 'signature-validity-info';
-      }
-
-      const timestampValid = signatureValidation?.timestampPresent === true && signatureValidation?.timestampValid === true;
-      const timestampNote = timestampValid
+      const isGovBrValidation = isGovBrSignatureValidation(signatureValidation);
+      const timestampValidGlobal = signatureValidation?.timestampPresent === true && signatureValidation?.timestampValid === true;
+      const timestampNoteGlobal = timestampValidGlobal
         ? 'Carimbo do tempo documental localizado e validado.'
         : 'Sem carimbo do tempo documental identificado.';
 
-      const revocationStatusRaw = String(signatureValidation?.revocationStatus || '').toLowerCase();
-      const revocationSource = signatureValidation?.revocationSource || signatureValidation?.revocationMethod || '';
-      let revocationStatusText = 'Revogação: não consultada.';
-      let revocationStatusClass = 'signature-validity-warning';
+      const buildItem = (signature, position) => {
+        const extracted = extractNameAndCpfFromSubject(signature?.certificateSubject || '');
 
-      if (signatureValidation?.revoked === true || revocationStatusRaw === 'revoked') {
-        const date = signatureValidation?.revocationDate ? ` Data da revogação: ${formatDateTimeBR(signatureValidation.revocationDate)}.` : '';
-        const reason = signatureValidation?.revocationReason ? ` Motivo: ${signatureValidation.revocationReason}.` : '';
-        revocationStatusText = `Revogação: certificado revogado.${date}${reason}`;
-        revocationStatusClass = 'signature-validity-bad';
-      } else if (revocationStatusRaw === 'good' || (signatureValidation?.revocationChecked === true && signatureValidation?.revoked === false)) {
-        const sourceText = revocationSource ? `, por ${revocationSource}` : '';
-        const evidenceText = signatureValidation?.revocationEvidenceValid === true ? ' Evidência validada.' : '';
-        const freshText = signatureValidation?.revocationFresh === true
-          ? ' Evidência atual.'
-          : signatureValidation?.revocationFresh === false
-            ? ' Atualidade da evidência não confirmada.'
-            : '';
-        revocationStatusText = `Revogação: não revogado${sourceText}.${evidenceText}${freshText}`;
-        revocationStatusClass = 'signature-validity-info';
-      } else if (revocationStatusRaw === 'indeterminate') {
-        revocationStatusText = 'Revogação: indeterminada. Não foi possível concluir a situação de revogação pela fonte consultada.';
-        revocationStatusClass = 'signature-validity-warning';
-      }
+        const certificateValidity = signature?.certificateNotBefore && signature?.certificateNotAfter
+          ? `${formatDateBR(signature.certificateNotBefore)} a ${formatDateBR(signature.certificateNotAfter)}`
+          : 'Não localizada';
 
-      const isGovBrSignature = isGovBrSignatureValidation(signatureValidation);
+        const signDate = signature?.signDate ? new Date(signature.signDate) : null;
+        const notBefore = signature?.certificateNotBefore ? new Date(signature.certificateNotBefore) : null;
+        const notAfter = signature?.certificateNotAfter ? new Date(signature.certificateNotAfter) : null;
+
+        const hasComparableSignatureDate = Boolean(
+          signDate && notBefore && notAfter &&
+          !Number.isNaN(signDate.getTime()) &&
+          !Number.isNaN(notBefore.getTime()) &&
+          !Number.isNaN(notAfter.getTime())
+        );
+
+        const signedWithinCertificateValidity = Boolean(
+          hasComparableSignatureDate &&
+          signDate >= notBefore &&
+          signDate <= notAfter
+        );
+
+        let signatureValidityStatusText = 'Não foi possível comparar a data da assinatura com a vigência do certificado.';
+        let signatureValidityStatusClass = 'signature-validity-warning';
+        if (hasComparableSignatureDate && signedWithinCertificateValidity) {
+          signatureValidityStatusText = 'Assinado dentro do período de validade do certificado, conforme data extraída da assinatura.';
+          signatureValidityStatusClass = 'signature-validity-good';
+        } else if (hasComparableSignatureDate) {
+          signatureValidityStatusText = 'Data da assinatura fora do período de validade do certificado.';
+          signatureValidityStatusClass = 'signature-validity-bad';
+        }
+
+        const hasComparableValidationDate = Boolean(
+          notBefore && notAfter &&
+          !Number.isNaN(notBefore.getTime()) &&
+          !Number.isNaN(notAfter.getTime()) &&
+          !Number.isNaN(validationDate.getTime())
+        );
+
+        const certificateExpiredAtValidation = Boolean(hasComparableValidationDate && validationDate > notAfter);
+        const certificateNotYetValidAtValidation = Boolean(hasComparableValidationDate && validationDate < notBefore);
+
+        let certificateStatusAtValidationText = 'Situação do certificado na data da validação: não verificável.';
+        let certificateStatusAtValidationClass = 'signature-validity-warning';
+        if (certificateExpiredAtValidation) {
+          certificateStatusAtValidationText = 'Certificado expirado na data da validação.';
+          certificateStatusAtValidationClass = 'signature-validity-expired';
+        } else if (certificateNotYetValidAtValidation) {
+          certificateStatusAtValidationText = 'Certificado ainda não vigente na data da validação.';
+          certificateStatusAtValidationClass = 'signature-validity-bad';
+        } else if (hasComparableValidationDate) {
+          certificateStatusAtValidationText = 'Certificado vigente na data da validação.';
+          certificateStatusAtValidationClass = 'signature-validity-info';
+        }
+
+        const revocationStatusRaw = String(signature?.revocationStatus || signatureValidation?.revocationStatus || '').toLowerCase();
+        const revocationSource = signature?.revocationSource || signature?.revocationMethod || signatureValidation?.revocationSource || signatureValidation?.revocationMethod || '';
+        let revocationStatusText = 'Revogação: não consultada.';
+        let revocationStatusClass = 'signature-validity-warning';
+
+        if (signature?.revoked === true || signatureValidation?.revoked === true || revocationStatusRaw === 'revoked') {
+          const date = signatureValidation?.revocationDate ? ` Data da revogação: ${formatDateTimeBR(signatureValidation.revocationDate)}.` : '';
+          const reason = signatureValidation?.revocationReason ? ` Motivo: ${signatureValidation.revocationReason}.` : '';
+          revocationStatusText = `Revogação: certificado revogado.${date}${reason}`;
+          revocationStatusClass = 'signature-validity-bad';
+        } else if (revocationStatusRaw === 'good' || (signature?.revocationChecked === true && signature?.revoked === false) || (signatureValidation?.revocationChecked === true && signatureValidation?.revoked === false)) {
+          const sourceText = revocationSource ? `, por ${revocationSource}` : '';
+          const evidenceValid = signature?.revocationEvidenceValid === true || signatureValidation?.revocationEvidenceValid === true;
+          const evidenceFresh = signature?.revocationFresh === true || signatureValidation?.revocationFresh === true;
+          const evidenceText = evidenceValid ? ' Evidência validada.' : '';
+          const freshText = evidenceFresh
+            ? ' Evidência atual.'
+            : (signature?.revocationFresh === false || signatureValidation?.revocationFresh === false)
+              ? ' Atualidade da evidência não confirmada.'
+              : '';
+          revocationStatusText = `Revogação: não revogado${sourceText}.${evidenceText}${freshText}`;
+          revocationStatusClass = 'signature-validity-info';
+        } else if (revocationStatusRaw === 'indeterminate') {
+          revocationStatusText = 'Revogação: indeterminada. Não foi possível concluir a situação de revogação pela fonte consultada.';
+          revocationStatusClass = 'signature-validity-warning';
+        }
+
+        const isGovBrSignature = isGovBrValidation || signature?.govBr === true || signature?.govBrAdvanced === true || signature?.govBrIssuerDetected === true;
+        const timestampValid = signature?.timestampPresent === true && signature?.timestampValid === true;
+        const timestampNote = timestampValid ? 'Carimbo do tempo documental localizado e validado.' : timestampNoteGlobal;
+
+        return {
+          position,
+          arquivo: basic?.name || selectedFile?.name || 'Não localizado',
+          numeroSerieCertificado: formatCertificateSerialColon(signature?.certificateSerialNumber || signature?.certificateSerialNumberHex),
+          numeroSerieCertificadoHex: formatCertificateSerialHex(signature?.certificateSerialNumberHex || signature?.certificateSerialNumber),
+          emissorCertificado: signature?.certificateIssuerName || signature?.certificateIssuer || 'Não localizado',
+          assinanteNome: extracted.nome || signature?.name || 'Não localizado',
+          assinanteCpf: formatCpfMasked(extracted.cpf),
+          isGovBrSignature,
+          govBrLevelText: 'Prata ou ouro exigido pelo serviço gov.br. Nível exato não identificável no PDF.',
+          certificadoVigencia: certificateValidity,
+          dataAssinatura: formatDateTimeBR(signature?.signDate),
+          dataValidacao: formatDateTimeBR(validationDate.toISOString()),
+          classificacaoTecnica: signature?.standard || signatureValidation?.standard || 'Não informada',
+          validationStatus: signature?.validationStatus || signature?.govBrValidationStatus || signatureValidation?.govBrValidationStatus || signatureValidation?.result || 'Não informado',
+          validationMessage: signature?.validationMessage || signature?.govBrMessage || '',
+          signedWithinCertificateValidity,
+          signatureValidityStatusText,
+          signatureValidityStatusClass,
+          certificateExpiredAtValidation,
+          certificateNotYetValidAtValidation,
+          certificateStatusAtValidationText,
+          certificateStatusAtValidationClass,
+          timestampValid,
+          timestampNote,
+          revocationStatusText,
+          revocationStatusClass
+        };
+      };
+
+      const items = signatures.map((signature, index) => buildItem(signature, index + 1));
 
       return {
         arquivo: basic?.name || selectedFile?.name || 'Não localizado',
-        numeroSerieCertificado: formatCertificateSerialColon(firstSignature?.certificateSerialNumber || firstSignature?.certificateSerialNumberHex),
-        numeroSerieCertificadoHex: formatCertificateSerialHex(firstSignature?.certificateSerialNumberHex || firstSignature?.certificateSerialNumber),
-        emissorCertificado: firstSignature?.certificateIssuerName || firstSignature?.certificateIssuer || 'Não localizado',
-        assinanteNome: extracted.nome || 'Não localizado',
-        assinanteCpf: formatCpfMasked(extracted.cpf),
-        isGovBrSignature,
+        signatureCount: items.length,
+        isGovBrSignature: isGovBrValidation,
         govBrLevelText: 'Prata ou ouro exigido pelo serviço gov.br. Nível exato não identificável no PDF.',
-        certificadoVigencia: certificateValidity,
-        dataAssinatura: formatDateTimeBR(firstSignature?.signDate),
-        dataValidacao: formatDateTimeBR(validationDate.toISOString()),
-        classificacaoTecnica: signatureValidation?.standard || 'Não informada',
-        signedWithinCertificateValidity,
-        signatureValidityStatusText,
-        signatureValidityStatusClass,
-        certificateExpiredAtValidation,
-        certificateNotYetValidAtValidation,
-        certificateStatusAtValidationText,
-        certificateStatusAtValidationClass,
-        timestampValid,
-        timestampNote,
-        revocationStatusText,
-        revocationStatusClass
+        signatures: items,
+        ...items[0]
       };
     }
 
     function signaturePresentationText(data) {
       if (!data) return '';
-      const identityText = data.isGovBrSignature
-        ? `Nível gov.br: ${data.govBrLevelText}`
-        : `CPF: ${data.assinanteCpf}`;
-      return ` Arquivo: ${data.arquivo}. Número de série do certificado: ${data.numeroSerieCertificado}. Equivalente hexadecimal: ${data.numeroSerieCertificadoHex}. Assinante: ${data.assinanteNome}. ${identityText}. Emissor do certificado: ${data.emissorCertificado}. Vigência do certificado: ${data.certificadoVigencia}. Documento assinado em: ${data.dataAssinatura}. ${data.signatureValidityStatusText} Data da validação: ${data.dataValidacao}. ${data.certificateStatusAtValidationText} ${data.revocationStatusText} ${data.timestampNote}`;
+      const items = Array.isArray(data.signatures) && data.signatures.length ? data.signatures : [data];
+
+      return items.map(item => {
+        const identityText = item.isGovBrSignature
+          ? `Nível gov.br: ${item.govBrLevelText}`
+          : `CPF: ${item.assinanteCpf}`;
+        const prefix = items.length > 1 ? ` Assinatura ${item.position}:` : '';
+        const validationText = item.validationMessage ? ` Situação técnica: ${item.validationMessage}.` : '';
+        return `${prefix} Arquivo: ${item.arquivo}. Número de série do certificado: ${item.numeroSerieCertificado}. Equivalente hexadecimal: ${item.numeroSerieCertificadoHex}. Assinante: ${item.assinanteNome}. ${identityText}. Emissor do certificado: ${item.emissorCertificado}. Vigência do certificado: ${item.certificadoVigencia}. Documento assinado em: ${item.dataAssinatura}. ${item.signatureValidityStatusText} Data da validação: ${item.dataValidacao}. ${item.certificateStatusAtValidationText} ${item.revocationStatusText} ${item.timestampNote}.${validationText}`;
+      }).join(' ');
     }
 
     function signaturePresentationHtml(data) {
       if (!data) return '';
-      const identityLine = data.isGovBrSignature
-        ? `<div><strong>Nível gov.br:</strong> ${escapeHtml(data.govBrLevelText)}</div>`
-        : `<div><strong>CPF:</strong> ${escapeHtml(data.assinanteCpf)}</div>`;
-      return `
-        <div class="signature-extra">
-          <div><strong>Arquivo:</strong> ${escapeHtml(data.arquivo)}</div>
-          <div><strong>Número de série do certificado:</strong> ${escapeHtml(data.numeroSerieCertificado)}</div>
-          <div><strong>Equivalente hexadecimal:</strong> ${escapeHtml(data.numeroSerieCertificadoHex)}</div>
-          <div><strong>Assinante:</strong> ${escapeHtml(data.assinanteNome)}</div>
-          ${identityLine}
-          <div><strong>Emissor do certificado:</strong> ${escapeHtml(data.emissorCertificado)}</div>
-          <div><strong>Vigência do certificado:</strong> ${escapeHtml(data.certificadoVigencia)}</div>
-          <div><strong>Documento assinado em:</strong> ${escapeHtml(data.dataAssinatura)}</div>
-          <div class="${escapeHtml(data.signatureValidityStatusClass)}">${escapeHtml(data.signatureValidityStatusText)}</div>
-          <div><strong>Data da validação:</strong> ${escapeHtml(data.dataValidacao)}</div>
-          <div class="${escapeHtml(data.certificateStatusAtValidationClass)}">${escapeHtml(data.certificateStatusAtValidationText)}</div>
-          <div class="${escapeHtml(data.revocationStatusClass)}">${escapeHtml(data.revocationStatusText)}</div>
-          <div class="signature-time-note">${escapeHtml(data.timestampNote)}</div>
-          <div><strong>Classificação técnica:</strong> ${escapeHtml(data.classificacaoTecnica)}</div>
-        </div>
-      `;
+      const items = Array.isArray(data.signatures) && data.signatures.length ? data.signatures : [data];
+
+      const cards = items.map(item => {
+        const identityLine = item.isGovBrSignature
+          ? `<div><strong>Nível gov.br:</strong> ${escapeHtml(item.govBrLevelText)}</div>`
+          : `<div><strong>CPF:</strong> ${escapeHtml(item.assinanteCpf)}</div>`;
+        const title = items.length > 1
+          ? `<div><strong>Assinatura ${escapeHtml(String(item.position))}</strong></div>`
+          : '';
+        const validationLine = item.validationMessage
+          ? `<div><strong>Situação técnica:</strong> ${escapeHtml(item.validationMessage)}</div>`
+          : '';
+        return `
+          <div class="signature-extra">
+            ${title}
+            <div><strong>Arquivo:</strong> ${escapeHtml(item.arquivo)}</div>
+            <div><strong>Número de série do certificado:</strong> ${escapeHtml(item.numeroSerieCertificado)}</div>
+            <div><strong>Equivalente hexadecimal:</strong> ${escapeHtml(item.numeroSerieCertificadoHex)}</div>
+            <div><strong>Assinante:</strong> ${escapeHtml(item.assinanteNome)}</div>
+            ${identityLine}
+            <div><strong>Emissor do certificado:</strong> ${escapeHtml(item.emissorCertificado)}</div>
+            <div><strong>Vigência do certificado:</strong> ${escapeHtml(item.certificadoVigencia)}</div>
+            <div><strong>Documento assinado em:</strong> ${escapeHtml(item.dataAssinatura)}</div>
+            <div class="${escapeHtml(item.signatureValidityStatusClass)}">${escapeHtml(item.signatureValidityStatusText)}</div>
+            <div><strong>Data da validação:</strong> ${escapeHtml(item.dataValidacao)}</div>
+            <div class="${escapeHtml(item.certificateStatusAtValidationClass)}">${escapeHtml(item.certificateStatusAtValidationText)}</div>
+            <div class="${escapeHtml(item.revocationStatusClass)}">${escapeHtml(item.revocationStatusText)}</div>
+            <div class="signature-time-note">${escapeHtml(item.timestampNote)}</div>
+            <div><strong>Classificação técnica:</strong> ${escapeHtml(item.classificacaoTecnica)}</div>
+            ${validationLine}
+          </div>
+        `;
+      }).join('');
+
+      return cards;
     }
 
     function evaluateSignature(details, basic, pdfInfo, purpose, signatureValidation) {
@@ -2873,13 +2926,14 @@
             const assinaturaGovBrConforme = isGovBrTechnicallyApprovedForRegistroImoveis(purpose, signatureValidation);
 
             if (assinaturaGovBrConforme) {
-              const govBrMessage = signatureValidation.govBrMessage || signatureValidation.message || 'Assinatura gov.br/e-gov validada tecnicamente.';
+              const govBrCount = Number(signatureValidation?.govBrSignatureCount || signatureValidation?.signatures?.length || 1);
+              const govBrMessage = signatureValidation.govBrMessage || signatureValidation.message || (govBrCount > 1 ? `${govBrCount} assinaturas gov.br/e-gov validadas tecnicamente.` : 'Assinatura gov.br/e-gov validada tecnicamente.');
               const govBrGuidance = `${govBrMessage}${standard}${level}${signatureContext}${signers}${revocationInfo}${timestampInfo}${warnings} Classificação gov.br/e-gov em trilha própria, sem alterar a validação ICP-Brasil. A classificação não substitui a análise jurídica sobre a suficiência da assinatura para a finalidade do documento.`;
 
               details.push({
-                req: 'Assinatura gov.br/e-gov',
+                req: govBrCount > 1 ? 'Assinaturas gov.br/e-gov' : 'Assinatura gov.br/e-gov',
                 status: 'ok',
-                result: 'Assinatura gov.br/e-gov aprovada tecnicamente',
+                result: govBrCount > 1 ? `${govBrCount} assinaturas gov.br/e-gov aprovadas tecnicamente` : 'Assinatura gov.br/e-gov aprovada tecnicamente',
                 guidance: govBrGuidance,
                 signaturePresentation
               });
