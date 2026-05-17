@@ -15,7 +15,7 @@ const VERAPDF_BIN = process.env.VERAPDF_BIN || 'verapdf';
 const MAX_FILE_SIZE = Number(process.env.MAX_FILE_SIZE || 50 * 1024 * 1024);
 const UPLOAD_ROOT = process.env.UPLOAD_ROOT || os.tmpdir();
 const SIGNATURE_VALIDATOR_URL = process.env.SIGNATURE_VALIDATOR_URL || '';
-const SIGNATURE_VALIDATOR_TIMEOUT = Number(process.env.SIGNATURE_VALIDATOR_TIMEOUT || 90000);
+const SIGNATURE_VALIDATOR_TIMEOUT = Number(process.env.SIGNATURE_VALIDATOR_TIMEOUT || 180000);
 
 app.disable('x-powered-by');
 app.use(express.static(path.join(process.cwd(), 'public')));
