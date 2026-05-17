@@ -2388,6 +2388,10 @@
       };
     }
 
+    function sleep(ms) {
+      return new Promise(resolve => window.setTimeout(resolve, ms));
+    }
+
     function classifyPdfDocument(pdfInfo, pdfImageInfo) {
       if (!pdfImageInfo || pdfImageInfo.ok !== true) {
         return {
