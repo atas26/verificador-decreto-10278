@@ -2689,6 +2689,45 @@
       return hasPositiveGovBrSignal && !hasInvalidSignal && revocationOk && integrityOk && finalDocumentOk;
     }
 
+
+    function isGovBrPartialValidationForRegistroImoveis(purpose, signatureValidation) {
+      if (purpose !== 'registro_imoveis') return false;
+      if (!isGovBrSignatureValidation(signatureValidation)) return false;
+      if (signatureValidation?.hasSignature !== true) return false;
+
+      const result = String(signatureValidation?.result || '').toLowerCase();
+      const status = String(signatureValidation?.govBrValidationStatus || '').toLowerCase();
+      const messageText = normalizeForSearch(collectSignatureValidationText(signatureValidation));
+      const count = Number(signatureValidation?.govBrSignatureCount || 0);
+      const validCount = Number(signatureValidation?.govBrValidSignatureCount || 0);
+      const indeterminateCount = Number(signatureValidation?.govBrIndeterminateSignatureCount || 0);
+
+      const explicitPartial =
+        result.includes('partial_govbr') ||
+        result.includes('valid_govbr_advanced_partial') ||
+        status.includes('partial_govbr') ||
+        messageText.includes('classificacao gov br e gov parcial') ||
+        messageText.includes('classificação gov br e gov parcial') ||
+        messageText.includes('uma ou mais assinaturas gov br e gov permaneceram indeterminadas');
+
+      return explicitPartial || (count > 1 && validCount > 0 && indeterminateCount > 0);
+    }
+
+    function buildGovBrPartialSummary(signatureValidation) {
+      const count = Number(signatureValidation?.govBrSignatureCount || signatureValidation?.signatures?.length || 0);
+      const validCount = Number(signatureValidation?.govBrValidSignatureCount || 0);
+      const indeterminateCount = Number(signatureValidation?.govBrIndeterminateSignatureCount || 0);
+      const invalidCount = Number(signatureValidation?.govBrInvalidSignatureCount || 0);
+
+      const parts = [];
+      if (count > 0) parts.push(`${count} assinatura(s) gov.br/e-gov detectada(s)`);
+      if (validCount > 0) parts.push(`${validCount} validada(s) tecnicamente`);
+      if (indeterminateCount > 0) parts.push(`${indeterminateCount} indeterminada(s)`);
+      if (invalidCount > 0) parts.push(`${invalidCount} inválida(s)`);
+
+      return parts.length ? parts.join('; ') + '.' : 'Assinatura gov.br/e-gov parcialmente validada.';
+    }
+
     function buildSignaturePresentation(signatureValidation, basic) {
       const signatures = Array.isArray(signatureValidation?.signatures) && signatureValidation.signatures.length
         ? signatureValidation.signatures
@@ -2934,6 +2973,20 @@
                 req: govBrCount > 1 ? 'Assinaturas gov.br/e-gov' : 'Assinatura gov.br/e-gov',
                 status: 'ok',
                 result: govBrCount > 1 ? `${govBrCount} assinaturas gov.br/e-gov aprovadas tecnicamente` : 'Assinatura gov.br/e-gov aprovada tecnicamente',
+                guidance: govBrGuidance,
+                signaturePresentation
+              });
+              return;
+            }
+
+            if (isGovBrPartialValidationForRegistroImoveis(purpose, signatureValidation)) {
+              const partialSummary = buildGovBrPartialSummary(signatureValidation);
+              const govBrGuidance = `${signatureValidation.message || 'Assinatura gov.br/e-gov parcialmente validada.'}${standard}${level}${signatureContext}${signers}${revocationInfo}${timestampInfo}${warnings} ${partialSummary} Verifique individualmente as assinaturas indicadas no relatório. Classificação gov.br/e-gov em trilha própria, sem alterar a validação ICP-Brasil. A classificação não substitui a análise jurídica sobre a suficiência da assinatura para a finalidade do documento.`;
+
+              details.push({
+                req: 'Assinaturas gov.br/e-gov',
+                status: 'warn',
+                result: 'Assinaturas gov.br/e-gov parcialmente validadas',
                 guidance: govBrGuidance,
                 signaturePresentation
               });
@@ -3402,8 +3455,8 @@
       const hashItem = details.find(item => item.req === 'Hash SHA-256 do arquivo analisado');
       const physicalItem = details.find(item => item.req === 'Conferência com o documento físico original');
 
-      const imageStatus = worstStatus([natureItem?.status, resolutionItem?.status, colorItem?.status]);
-      const integrityStatus = worstStatus([hashItem?.status, physicalItem?.status]);
+      const imageSummary = buildImageBlockSummary(natureItem, resolutionItem, colorItem);
+      const hashSummary = buildHashBlockSummary(hashItem, physicalItem);
 
       const items = [
         {
@@ -3425,15 +3478,7 @@
 
       if (!profile || profile.requiresImageAndMetadata) {
         items.push(
-          {
-            title: 'Digitalização e imagem',
-            status: imageStatus,
-            result: cleanSummaryResult(resolutionItem?.result || natureItem?.result || 'Não avaliada'),
-            text: [natureItem?.result, resolutionItem?.result, colorItem?.result]
-              .filter(Boolean)
-              .map(cleanSummaryResult)
-              .join(' | ') || 'Sem elementos suficientes para síntese de imagem.'
-          },
+          imageSummary,
           {
             title: 'Metadados dos Anexos I e II',
             status: metadataItem?.status || 'neutral',
@@ -3445,14 +3490,60 @@
         );
       }
 
-      items.push({
-        title: 'Hash e conferência material',
-        status: integrityStatus,
-        result: 'Hash calculado e conferência física não automatizada',
-        text: 'O hash identifica o arquivo analisado. A correspondência integral com o original físico depende de conferência externa.'
-      });
+      items.push(hashSummary);
 
       return items;
+    }
+
+    function buildImageBlockSummary(natureItem, resolutionItem, colorItem) {
+      const natureResult = cleanSummaryResult(natureItem?.result || '');
+      const resolutionResult = cleanSummaryResult(resolutionItem?.result || '');
+      const colorResult = cleanSummaryResult(colorItem?.result || '');
+      const joined = `${natureResult} ${resolutionResult} ${colorResult}`.toLowerCase();
+
+      const nativeOrSmallImages =
+        joined.includes('pdf nato-digital') ||
+        joined.includes('imagens pequenas') ||
+        joined.includes('não aplicável automaticamente') ||
+        joined.includes('nao aplicavel automaticamente');
+
+      if (nativeOrSmallImages) {
+        return {
+          title: 'Digitalização e imagem',
+          status: 'neutral',
+          result: natureResult || resolutionResult || 'PDF nato-digital ou sem imagem de página digitalizada',
+          text: 'Não foi localizada imagem com área compatível com página digitalizada. A resolução e a cor das imagens pequenas são informativas e não geram reprovação automática nesta versão.'
+        };
+      }
+
+      const imageStatus = worstStatus([natureItem?.status, resolutionItem?.status, colorItem?.status]);
+
+      return {
+        title: 'Digitalização e imagem',
+        status: imageStatus,
+        result: cleanSummaryResult(resolutionItem?.result || natureItem?.result || 'Não avaliada'),
+        text: [natureItem?.result, resolutionItem?.result, colorItem?.result]
+          .filter(Boolean)
+          .map(cleanSummaryResult)
+          .join(' | ') || 'Sem elementos suficientes para síntese de imagem.'
+      };
+    }
+
+    function buildHashBlockSummary(hashItem, physicalItem) {
+      const hashValue = cleanSummaryResult(hashItem?.result || '');
+      const hasHash = Boolean(hashValue && /^[a-f0-9]{32,}$/i.test(hashValue));
+      const physicalText = physicalItem?.status === 'warn'
+        ? 'A correspondência integral com eventual documento físico depende de conferência externa.'
+        : 'A conferência material permanece externa à ferramenta quando aplicável.';
+
+      return {
+        title: 'Hash e conferência material',
+        status: hashItem?.status || 'neutral',
+        result: hasHash ? `Hash SHA-256: ${hashValue}` : 'Hash calculado e conferência física não automatizada',
+        text: hasHash
+          ? `${physicalText}`
+          : 'O hash identifica o arquivo analisado. A correspondência integral com o original físico depende de conferência externa.'
+      };
     }
 
     function buildSignatureBlockSummary(signatureItem) {
@@ -3469,9 +3560,15 @@
         return base;
       }
 
+      const rawReq = cleanSummaryResult(signatureItem.req || '').toLowerCase();
       const rawResult = cleanSummaryResult(signatureItem.result || '');
-      const revoked = rawResult.toLowerCase().includes('revogada');
+      const rawResultLower = rawResult.toLowerCase();
+      const rawGuidance = cleanSummaryResult(signatureItem.guidance || '');
+      const rawGuidanceLower = rawGuidance.toLowerCase();
+      const revoked = rawResultLower.includes('revogada');
       const expiredWithoutTimestamp = presentation?.certificateExpiredAtValidation === true && presentation?.timestampValid !== true;
+      const govBr = rawReq.includes('gov.br') || rawReq.includes('e-gov') || rawResultLower.includes('gov.br') || rawResultLower.includes('e-gov') || rawGuidanceLower.includes('gov.br') || rawGuidanceLower.includes('e-gov');
+      const partialGovBr = govBr && (rawResultLower.includes('parcial') || rawGuidanceLower.includes('parcial') || rawGuidanceLower.includes('permaneceram indeterminadas'));
 
       if (revoked) {
         return {
@@ -3482,11 +3579,22 @@
         };
       }
 
-      if (expiredWithoutTimestamp || signatureItem.status === 'warn' || rawResult.toLowerCase().includes('indeterminada')) {
+      if (partialGovBr) {
+        const countMatch = rawGuidance.match(/(\d+)\s+de\s+(\d+)\s+assinatura/i);
+        const countText = countMatch ? `${countMatch[1]} de ${countMatch[2]} assinatura(s) gov.br/e-gov foram validadas tecnicamente.` : 'Há assinatura gov.br/e-gov validada tecnicamente, mas uma ou mais assinaturas permanecem indeterminadas.';
         return {
           ...base,
           status: 'warn',
-          result: 'Assinatura indeterminada',
+          result: 'Assinaturas gov.br/e-gov parcialmente validadas',
+          text: `${countText} Verifique a situação individual de cada assinatura no relatório detalhado.`
+        };
+      }
+
+      if (expiredWithoutTimestamp || signatureItem.status === 'warn' || rawResultLower.includes('indeterminada')) {
+        return {
+          ...base,
+          status: 'warn',
+          result: govBr ? 'Assinatura gov.br/e-gov indeterminada' : 'Assinatura indeterminada',
           text: expiredWithoutTimestamp
             ? 'O certificado está expirado na data da validação e não foi localizado carimbo do tempo documental válido. Consulte os detalhes da assinatura.'
             : 'Não foi possível concluir automaticamente todos os elementos necessários para aprovação da assinatura.'
@@ -3494,7 +3602,7 @@
       }
 
       if (signatureItem.status === 'ok') {
-        const govBrApproved = rawResult.toLowerCase().includes('gov.br') || rawResult.toLowerCase().includes('e-gov');
+        const govBrApproved = govBr;
         return {
           ...base,
           status: 'ok',
