@@ -625,6 +625,42 @@
 
     .empty strong { color: var(--ink); }
 
+    .progress-card {
+      width: min(520px, 100%);
+      display: grid;
+      gap: 12px;
+      justify-items: stretch;
+    }
+
+    .progress-card strong {
+      display: block;
+      text-align: center;
+      font-size: 15px;
+    }
+
+    .progress-card p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 12px;
+      overflow: hidden;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #edf2f8;
+    }
+
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--blue), var(--blue-dark));
+      transition: width .25s ease;
+    }
+
     .legal-box {
       margin-top: 18px;
       padding: 16px;
@@ -928,7 +964,7 @@
       <div class="card hero-main">
         <div class="eyebrow">Versão beta</div>
         <h1>Triagem e validação de documentos eletrônicos.</h1>
-        <p class="lead">Envie um PDF, escolha o perfil de análise e verifique formato, hash, conformidade PDF/A, assinatura digital ICP-Brasil e, quando aplicável, digitalização, imagem e metadados dos Anexos I e II, do Decreto nº 10.278/2020.</p>
+        <p class="lead">Envie um PDF, escolha o perfil de análise e verifique formato, hash, conformidade PDF/A, assinatura digital ICP-Brasil ou assinatura gov.br/e-gov e, quando aplicável, digitalização, imagem e metadados dos Anexos I e II, do Decreto nº 10.278/2020.</p>
         <div class="notice">O resultado é uma conferência automatizada do arquivo. Não substitui a qualificação notarial e registral nem os demais procedimentos de análise do documento eletrônico.</div>
         <div class="hero-actions" aria-label="Ações rápidas">
           <a class="anchor-btn" href="#ferramenta">Ir para a ferramenta</a>
@@ -944,7 +980,7 @@
             <li><span class="dot"></span><span>Hash SHA-256 calculado no próprio navegador.</span></li>
             <li><span class="dot"></span><span>Validação PDF/A.</span></li>
             <li><span class="dot"></span><span>Detecção técnica de assinatura digital embutida em PDF.</span></li>
-            <li><span class="dot"></span><span>Checagem da assinatura digital ICP-Brasil.</span></li>
+            <li><span class="dot"></span><span>Checagem da assinatura digital ICP-Brasil ou assinatura gov.br/e-gov.</span></li>
             <li><span class="dot"></span><span>Documentos destinados aos Registros de Imóveis: inclui PDF-A, assinatura digital ICP-Brasil ou assinatura gov.br/e-gov, digitalização, imagem e metadados dos Anexos I e II.</span></li>
             <li><span class="dot"></span><span>Documentos emitidos pelos Tabelionatos de Notas e Registros de Imóveis: inclui PDF/A e assinatura digital ICP-Brasil do delegatário, substituto ou preposto.</span></li>
           </ul>
@@ -1015,6 +1051,8 @@
               <option value="" selected>Selecione o perfil de análise</option>
               <option value="registro_imoveis">Documentos destinados aos Registros de Imóveis</option>
               <option value="tabelionato_notas">Documentos emitidos pelos Tabelionatos de Notas e Registros de Imóveis</option>
+              <option value="somente_assinatura">Checar assinatura (ICP-Brasil ou gov.br/e-gov)</option>
+              <option value="somente_pdfa">Checar requisitos PDF/A</option>
             </select>
           </div>
         </div>
@@ -1040,9 +1078,12 @@
 
       <section class="card panel" id="reportPanel">
         <div class="empty" id="emptyState">
-          <div>
-            <strong>Nenhum arquivo analisado.</strong>
-            <p>Selecione o perfil de análise, envie o arquivo e clique em analisar.</p>
+          <div class="progress-card" aria-label="Progresso da análise">
+            <strong id="progressText">Aguardando perfil de análise e arquivo.</strong>
+            <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+            </div>
+            <p>Escolha o perfil, envie o PDF e acompanhe o avanço da conferência automatizada.</p>
           </div>
         </div>
 
@@ -1099,7 +1140,7 @@
             <ul>
               <li>A ferramenta faz conferência automatizada do arquivo enviado e não substitui qualificação notarial, registral ou análise jurídica do título.</li>
               <li>A conformidade PDF/A é verificada tecnicamente pelo veraPDF, mas a adequação do documento ao caso concreto depende da finalidade de uso.</li>
-              <li>A assinatura digital é verificada por serviço técnico próprio, com análise do padrão PAdES, cadeia ICP-Brasil, revogação por OCSP ou LCR, DSS e carimbo do tempo quando disponível.</li>
+              <li>A assinatura digital é verificada por serviço técnico próprio, com análise do padrão PAdES, cadeia ICP-Brasil ou trilha gov.br/e-gov, revogação por OCSP ou LCR, DSS e carimbo do tempo quando disponível.</li>
               <li>A correspondência integral com o original físico, a autoria material e a suficiência dos metadados podem depender de conferência externa ou sistema de gestão documental.</li>
               <li><strong>LGPD e retenção.</strong> A ferramenta limita o tratamento aos dados técnicos necessários à conferência automatizada. O arquivo não é salvo, não fica armazenado e não há extração do conteúdo material do documento analisado para base de dados.</li>
               <li><strong>Legitimidade do assinante.</strong> A checagem confirma elementos técnicos da assinatura digital, mas não analisa se o assinante tinha poderes, representação, autorização ou legitimidade para assinar o documento.</li>
@@ -1127,7 +1168,7 @@
         </details>
         <details>
           <summary>A ferramenta confirma se o assinante tinha poderes?</summary>
-          <p>Não. A validação técnica pode verificar assinatura digital, cadeia ICP-Brasil, revogação e integridade quando o backend estiver disponível. Poderes, representação e legitimidade dependem de análise documental própria.</p>
+          <p>Não. A validação técnica pode verificar assinatura digital ICP-Brasil ou gov.br/e-gov, cadeia, revogação e integridade quando o backend estiver disponível. Poderes, representação e legitimidade dependem de análise documental própria.</p>
         </details>
         <details>
           <summary>Todo PDF/A será aceito por órgão público ou registro?</summary>
@@ -1223,6 +1264,12 @@
         label: 'Documentos destinados aos Registros de Imóveis',
         shortLabel: 'RI',
         requiresImageAndMetadata: true,
+        checkPdfA: true,
+        checkSignature: true,
+        checkImageAndMetadata: true,
+        checkMetadata: true,
+        checkHash: true,
+        checkPhysical: true,
         title: 'Perfil: Documentos destinados aos Registros de Imóveis',
         description: 'Checagem de documentos particulares digitalizados por particulares. O resultado considera PDF-A, assinatura digital ICP-Brasil ou assinatura gov.br/e-gov, digitalização, imagem e metadados dos Anexos I e II, em conformidade com o Decreto nº 10.278/2020.',
         applicable: ['PDF-A', 'Assinatura digital ICP-Brasil ou gov.br/e-gov', 'Digitalização', 'Imagem', 'Metadados dos Anexos I e II'],
@@ -1233,9 +1280,47 @@
         label: 'Documentos emitidos pelos Tabelionatos de Notas e Registros de Imóveis',
         shortLabel: 'Notas',
         requiresImageAndMetadata: false,
+        checkPdfA: true,
+        checkSignature: true,
+        checkImageAndMetadata: false,
+        checkMetadata: false,
+        checkHash: true,
+        checkPhysical: true,
         title: 'Perfil: Documentos emitidos pelos Tabelionatos de Notas e Registros de Imóveis',
         description: 'Checagem de títulos nato-digitais expedidos pela serventia. O resultado considera PDF/A e assinatura digital ICP-Brasil do delegatário, substituto ou preposto. Não incidem os requisitos do Decreto nº 10.278/2020, por se tratar de documento gerado nativamente em meio eletrônico, na forma do artigo 208, parágrafo 1º, incisos III e IV, do Provimento CN 149/2023.',
         applicable: ['PDF/A', 'Assinatura digital ICP-Brasil do delegatário, substituto ou preposto'],
+        notComputed: []
+      },
+      somente_assinatura: {
+        id: 'somente_assinatura',
+        label: 'Checar assinatura (ICP-Brasil ou gov.br/e-gov)',
+        shortLabel: 'Assinatura',
+        requiresImageAndMetadata: false,
+        checkPdfA: false,
+        checkSignature: true,
+        checkImageAndMetadata: false,
+        checkMetadata: false,
+        checkHash: true,
+        checkPhysical: false,
+        title: 'Perfil: Checar assinatura (ICP-Brasil ou gov.br/e-gov)',
+        description: 'Checagem técnica da assinatura digital ICP-Brasil ou da assinatura gov.br/e-gov existente no PDF, com análise de PAdES, integridade, certificado, cadeia, revogação e carimbo do tempo quando disponível.',
+        applicable: ['Assinatura digital ICP-Brasil', 'Assinatura gov.br/e-gov', 'Hash SHA-256'],
+        notComputed: []
+      },
+      somente_pdfa: {
+        id: 'somente_pdfa',
+        label: 'Checar requisitos PDF/A',
+        shortLabel: 'PDF/A',
+        requiresImageAndMetadata: false,
+        checkPdfA: true,
+        checkSignature: false,
+        checkImageAndMetadata: false,
+        checkMetadata: false,
+        checkHash: true,
+        checkPhysical: false,
+        title: 'Perfil: Checar requisitos PDF/A',
+        description: 'Checagem técnica de conformidade PDF/A por veraPDF, com identificação do formato do arquivo e hash SHA-256 para controle do arquivo analisado.',
+        applicable: ['PDF/A', 'Hash SHA-256'],
         notComputed: []
       }
     };
@@ -1261,7 +1346,9 @@
       blockSummary: document.getElementById('blockSummary'),
       copyBtn: document.getElementById('copyBtn'),
       downloadBtn: document.getElementById('downloadBtn'),
-      newAnalysisBtn: document.getElementById('newAnalysisBtn')
+      newAnalysisBtn: document.getElementById('newAnalysisBtn'),
+      progressFill: document.getElementById('progressFill'),
+      progressText: document.getElementById('progressText')
     };
 
     let selectedFile = null;
@@ -1340,6 +1427,7 @@
           <p>Antes de enviar o arquivo, selecione o perfil adequado. Essa escolha define quais requisitos serão verificados pela ferramenta.</p>
         `;
       }
+      setProgress(0, 'Escolha o perfil de análise para iniciar.');
       if (els.purpose) {
         els.purpose.focus();
       }
@@ -1358,6 +1446,21 @@
         <p>${escapeHtml(profile.description)}</p>
         <div class="profile-scope">${applicable}</div>
       `;
+      setProgress(selectedFile ? 10 : 0, selectedFile ? 'Arquivo selecionado. Clique em analisar.' : 'Perfil selecionado. Envie o arquivo para iniciar.');
+    }
+
+    function setProgress(percent, text) {
+      const value = Math.max(0, Math.min(100, Number(percent) || 0));
+      if (els.progressFill) {
+        els.progressFill.style.width = `${value}%`;
+      }
+      const track = els.progressFill?.closest('[role="progressbar"]');
+      if (track) {
+        track.setAttribute('aria-valuenow', String(value));
+      }
+      if (els.progressText && text) {
+        els.progressText.textContent = text;
+      }
     }
 
     function setSelectedFile(file) {
@@ -1383,6 +1486,7 @@
       els.fileName.textContent = `${file.name} · ${formatBytes(file.size)}`;
       els.fileName.style.display = 'block';
       els.analyzeBtn.disabled = false;
+      setProgress(10, 'Arquivo selecionado. Clique em analisar.');
     }
 
     function clearAll() {
@@ -1398,6 +1502,7 @@
       els.emptyState.classList.remove('hidden');
       els.report.classList.add('hidden');
       els.resultsBody.innerHTML = '';
+      setProgress(0, 'Aguardando perfil de análise e arquivo.');
     }
 
     async function analyzeSelectedFile() {
@@ -1407,6 +1512,7 @@
       els.analyzeBtn.classList.add('btn-loading');
       els.analyzeBtn.innerHTML = '<span class="button-spinner" aria-hidden="true"></span><span>Analisando</span><span class="loading-dots" aria-hidden="true"></span>';
       els.analyzeBtn.setAttribute('aria-busy', 'true');
+      setProgress(15, 'Lendo o arquivo selecionado.');
       if (els.reportPanel) {
         setTimeout(() => els.reportPanel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
       }
@@ -1420,6 +1526,13 @@
         const basic = identifyFile(selectedFile, bytes);
         const details = [];
 
+        const shouldValidatePdfA = profile?.checkPdfA !== false;
+        const shouldValidateSignature = profile?.checkSignature === true;
+        const shouldInspectImageAndMetadata = profile?.checkImageAndMetadata === true;
+        const shouldValidateMetadata = profile?.checkMetadata === true;
+        const shouldAddHash = profile?.checkHash !== false;
+        const shouldAddPhysical = profile?.checkPhysical !== false;
+
         let pdfInfo = null;
         let pdfImageInfo = null;
         let pdfaValidation = null;
@@ -1429,47 +1542,73 @@
 
         if (basic.kind === 'PDF') {
           pdfInfo = inspectPdf(bytes);
-          pdfImageInfo = await inspectPdfImagesWithPdfjs(buffer);
-          pdfProfile = classifyPdfDocument(pdfInfo, pdfImageInfo);
-          pdfaValidation = await validatePdfAWithBackend(selectedFile);
-          signatureValidation = await validateSignatureWithBackend(selectedFile);
+
+          if (shouldInspectImageAndMetadata) {
+            setProgress(30, 'Lendo imagens internas do PDF.');
+            pdfImageInfo = await inspectPdfImagesWithPdfjs(buffer);
+            pdfProfile = classifyPdfDocument(pdfInfo, pdfImageInfo);
+          }
+
+          if (shouldValidatePdfA) {
+            setProgress(45, 'Validando conformidade PDF/A.');
+            pdfaValidation = await validatePdfAWithBackend(selectedFile);
+          }
+
+          if (shouldValidateSignature) {
+            setProgress(65, 'Validando assinatura digital.');
+            signatureValidation = await validateSignatureWithBackend(selectedFile);
+          }
         }
 
         if (basic.kind === 'PNG') {
           pngInfo = inspectPng(bytes);
         }
 
-        evaluateFormat(details, basic, rule, pdfInfo, pdfaValidation);
-        if (profile.requiresImageAndMetadata) {
+        if (shouldValidatePdfA) {
+          evaluateFormat(details, basic, rule, pdfInfo, pdfaValidation);
+        }
+
+        if (shouldInspectImageAndMetadata) {
           evaluatePdfNature(details, basic, pdfProfile);
           evaluateResolution(details, basic, rule, pngInfo, pdfImageInfo, pdfProfile);
           evaluateColor(details, basic, rule, pngInfo, pdfImageInfo);
         }
-        evaluateSignature(details, basic, pdfInfo, profile.id, signatureValidation);
-        if (profile.requiresImageAndMetadata) {
+
+        if (shouldValidateSignature) {
+          evaluateSignature(details, basic, pdfInfo, profile.id, signatureValidation);
+        }
+
+        if (shouldValidateMetadata) {
           evaluateMetadata(details, basic, pdfInfo, pngInfo);
         }
 
-        details.push({
-          req: 'Hash SHA-256 do arquivo analisado',
-          status: 'neutral',
-          result: `<span class="hash">${hash}</span>`,
-          guidance: 'Hash calculado pela ferramenta para identificação do arquivo. A conformidade exige que o hash também integre o procedimento de gestão ou os metadados aplicáveis.'
-        });
+        if (shouldAddHash) {
+          details.push({
+            req: 'Hash SHA-256 do arquivo analisado',
+            status: 'neutral',
+            result: `<span class="hash">${hash}</span>`,
+            guidance: 'Hash calculado pela ferramenta para identificação do arquivo. A conformidade exige que o hash também integre o procedimento de gestão ou os metadados aplicáveis.'
+          });
+        }
 
-        details.push({
-          req: 'Conferência com o documento físico original',
-          status: profile.requiresImageAndMetadata ? 'warn' : 'neutral',
-          result: profile.requiresImageAndMetadata ? 'Não verificável automaticamente' : 'Conferência externa, fora da contagem principal',
-          guidance: profile.requiresImageAndMetadata
-            ? 'A ferramenta não confirma se a digitalização corresponde integralmente ao original físico, nem se todas as páginas foram capturadas.'
-            : 'Para o perfil Documentos emitidos pelos Tabelionatos de Notas e Registros de Imóveis, a contagem principal considera PDF/A e assinatura digital ICP-Brasil do delegatário, substituto ou preposto. A conferência material permanece externa à ferramenta.'
-        });
+        if (shouldAddPhysical) {
+          details.push({
+            req: 'Conferência com o documento físico original',
+            status: profile.requiresImageAndMetadata ? 'warn' : 'neutral',
+            result: profile.requiresImageAndMetadata ? 'Não verificável automaticamente' : 'Conferência externa, fora da contagem principal',
+            guidance: profile.requiresImageAndMetadata
+              ? 'A ferramenta não confirma se a digitalização corresponde integralmente ao original físico, nem se todas as páginas foram capturadas.'
+              : 'A conferência material permanece externa à ferramenta quando aplicável.'
+          });
+        }
 
+        setProgress(90, 'Montando relatório técnico preliminar.');
         const totals = summarize(details);
         renderReport({ basic, rule, details, totals, hash, profile });
+        setProgress(100, 'Análise concluída.');
       } catch (error) {
         console.error(error);
+        setProgress(0, 'Erro na análise.');
         showError(`Não foi possível analisar o arquivo. Detalhe técnico: ${error?.message || error || 'erro não informado'}`);
       } finally {
         els.analyzeBtn.disabled = false;
@@ -2837,7 +2976,7 @@
           assinanteNome: extracted.nome || signature?.name || 'Não localizado',
           assinanteCpf: formatCpfMasked(extracted.cpf),
           isGovBrSignature,
-          govBrLevelText: 'Prata ou ouro exigido pelo serviço gov.br. Nível exato não identificável no PDF.',
+          govBrLevelText: 'Prata ou ouro exigido pelo serviço gov.br. Nível exato não identificável no PDF',
           certificadoVigencia: certificateValidity,
           dataAssinatura: formatDateTimeBR(signature?.signDate),
           dataValidacao: formatDateTimeBR(validationDate.toISOString()),
@@ -2864,7 +3003,7 @@
         arquivo: basic?.name || selectedFile?.name || 'Não localizado',
         signatureCount: items.length,
         isGovBrSignature: isGovBrValidation,
-        govBrLevelText: 'Prata ou ouro exigido pelo serviço gov.br. Nível exato não identificável no PDF.',
+        govBrLevelText: 'Prata ou ouro exigido pelo serviço gov.br. Nível exato não identificável no PDF',
         signatures: items,
         ...items[0]
       };
@@ -2874,7 +3013,7 @@
       if (!data) return '';
       const items = Array.isArray(data.signatures) && data.signatures.length ? data.signatures : [data];
 
-      return items.map(item => {
+      const text = items.map(item => {
         const identityText = item.isGovBrSignature
           ? `Nível gov.br: ${item.govBrLevelText}`
           : `CPF: ${item.assinanteCpf}`;
@@ -2882,6 +3021,7 @@
         const validationText = item.validationMessage ? ` Situação técnica: ${item.validationMessage}.` : '';
         return `${prefix} Arquivo: ${item.arquivo}. Número de série do certificado: ${item.numeroSerieCertificado}. Equivalente hexadecimal: ${item.numeroSerieCertificadoHex}. Assinante: ${item.assinanteNome}. ${identityText}. Emissor do certificado: ${item.emissorCertificado}. Vigência do certificado: ${item.certificadoVigencia}. Documento assinado em: ${item.dataAssinatura}. ${item.signatureValidityStatusText} Data da validação: ${item.dataValidacao}. ${item.certificateStatusAtValidationText} ${item.revocationStatusText} ${item.timestampNote}.${validationText}`;
       }).join(' ');
+      return normalizeVisibleText(text);
     }
 
     function signaturePresentationHtml(data) {
@@ -2890,13 +3030,13 @@
 
       const cards = items.map(item => {
         const identityLine = item.isGovBrSignature
-          ? `<div><strong>Nível gov.br:</strong> ${escapeHtml(item.govBrLevelText)}</div>`
+          ? `<div><strong>Nível gov.br:</strong> ${escapeHtml(normalizeVisibleText(item.govBrLevelText))}</div>`
           : `<div><strong>CPF:</strong> ${escapeHtml(item.assinanteCpf)}</div>`;
         const title = items.length > 1
           ? `<div><strong>Assinatura ${escapeHtml(String(item.position))}</strong></div>`
           : '';
         const validationLine = item.validationMessage
-          ? `<div><strong>Situação técnica:</strong> ${escapeHtml(item.validationMessage)}</div>`
+          ? `<div><strong>Situação técnica:</strong> ${escapeHtml(normalizeVisibleText(item.validationMessage))}</div>`
           : '';
         return `
           <div class="signature-extra">
@@ -2909,11 +3049,11 @@
             <div><strong>Emissor do certificado:</strong> ${escapeHtml(item.emissorCertificado)}</div>
             <div><strong>Vigência do certificado:</strong> ${escapeHtml(item.certificadoVigencia)}</div>
             <div><strong>Documento assinado em:</strong> ${escapeHtml(item.dataAssinatura)}</div>
-            <div class="${escapeHtml(item.signatureValidityStatusClass)}">${escapeHtml(item.signatureValidityStatusText)}</div>
+            <div class="${escapeHtml(item.signatureValidityStatusClass)}">${escapeHtml(normalizeVisibleText(item.signatureValidityStatusText))}</div>
             <div><strong>Data da validação:</strong> ${escapeHtml(item.dataValidacao)}</div>
-            <div class="${escapeHtml(item.certificateStatusAtValidationClass)}">${escapeHtml(item.certificateStatusAtValidationText)}</div>
-            <div class="${escapeHtml(item.revocationStatusClass)}">${escapeHtml(item.revocationStatusText)}</div>
-            <div class="signature-time-note">${escapeHtml(item.timestampNote)}</div>
+            <div class="${escapeHtml(item.certificateStatusAtValidationClass)}">${escapeHtml(normalizeVisibleText(item.certificateStatusAtValidationText))}</div>
+            <div class="${escapeHtml(item.revocationStatusClass)}">${escapeHtml(normalizeVisibleText(item.revocationStatusText))}</div>
+            <div class="signature-time-note">${escapeHtml(normalizeVisibleText(item.timestampNote))}</div>
             <div><strong>Classificação técnica:</strong> ${escapeHtml(item.classificacaoTecnica)}</div>
             ${validationLine}
           </div>
@@ -2967,7 +3107,7 @@
             if (assinaturaGovBrConforme) {
               const govBrCount = Number(signatureValidation?.govBrSignatureCount || signatureValidation?.signatures?.length || 1);
               const govBrMessage = signatureValidation.govBrMessage || signatureValidation.message || (govBrCount > 1 ? `${govBrCount} assinaturas gov.br/e-gov validadas tecnicamente.` : 'Assinatura gov.br/e-gov validada tecnicamente.');
-              const govBrGuidance = `${govBrMessage}${standard}${level}${signatureContext}${signers}${revocationInfo}${timestampInfo}${warnings} Classificação gov.br/e-gov em trilha própria, sem alterar a validação ICP-Brasil. A classificação não substitui a análise jurídica sobre a suficiência da assinatura para a finalidade do documento.`;
+              const govBrGuidance = `${govBrMessage}${standard}${level}${signatureContext}${signers}${revocationInfo}${timestampInfo}${warnings} A classificação não substitui a análise jurídica sobre a suficiência da assinatura para a finalidade do documento.`;
 
               details.push({
                 req: govBrCount > 1 ? 'Assinaturas gov.br/e-gov' : 'Assinatura gov.br/e-gov',
@@ -2981,7 +3121,7 @@
 
             if (isGovBrPartialValidationForRegistroImoveis(purpose, signatureValidation)) {
               const partialSummary = buildGovBrPartialSummary(signatureValidation);
-              const govBrGuidance = `${signatureValidation.message || 'Assinatura gov.br/e-gov parcialmente validada.'}${standard}${level}${signatureContext}${signers}${revocationInfo}${timestampInfo}${warnings} ${partialSummary} Verifique individualmente as assinaturas indicadas no relatório. Classificação gov.br/e-gov em trilha própria, sem alterar a validação ICP-Brasil. A classificação não substitui a análise jurídica sobre a suficiência da assinatura para a finalidade do documento.`;
+              const govBrGuidance = `${signatureValidation.message || 'Assinatura gov.br/e-gov parcialmente validada.'}${standard}${level}${signatureContext}${signers}${revocationInfo}${timestampInfo}${warnings} ${partialSummary} Verifique individualmente as assinaturas indicadas no relatório. A classificação não substitui a análise jurídica sobre a suficiência da assinatura para a finalidade do documento.`;
 
               details.push({
                 req: 'Assinaturas gov.br/e-gov',
@@ -3408,8 +3548,8 @@
           <article class="block-card">
             <div class="block-card-title">${escapeHtml(item.title)}</div>
             <span class="tag ${item.status}">${labelForStatus(item.status)}</span>
-            <div class="block-card-result">${escapeHtml(item.result)}</div>
-            <div class="block-card-text">${escapeHtml(item.text)}</div>
+            <div class="block-card-result">${escapeHtml(normalizeVisibleText(item.result))}</div>
+            <div class="block-card-text">${escapeHtml(normalizeVisibleText(item.text))}</div>
             ${item.signaturePresentation ? signaturePresentationHtml(item.signaturePresentation) : ''}
           </article>
         `).join('');
@@ -3417,9 +3557,9 @@
 
       els.resultsBody.innerHTML = details.map(item => `
         <tr>
-          <td>${escapeHtml(item.req)}</td>
+          <td>${escapeHtml(normalizeVisibleText(item.req))}</td>
           <td><span class="tag ${item.status}">${labelForStatus(item.status)}</span><br>${item.result}</td>
-          <td>${escapeHtml(item.guidance)}</td>
+          <td>${escapeHtml(normalizeVisibleText(item.guidance))}</td>
         </tr>
       `).join('');
 
@@ -3469,19 +3609,25 @@
           status: 'neutral',
           result: profile?.label || 'Não informado',
           text: profile?.description || 'O perfil define quais blocos entram na contagem principal do resultado.'
-        },
-        {
+        }
+      ];
+
+      if (!profile || profile.checkPdfA !== false) {
+        items.push({
           title: 'Formato e PDF/A',
           status: formatItem?.status || 'neutral',
           result: cleanSummaryResult(formatItem?.result || 'Não avaliado'),
           text: formatItem?.status === 'ok'
             ? 'O formato técnico principal do arquivo foi validado conforme o item analisado.'
             : 'Verifique a geração do arquivo e a conformidade PDF/A quando o perfil exigir esse padrão.'
-        },
-        buildSignatureBlockSummary(signatureItem)
-      ];
+        });
+      }
 
-      if (!profile || profile.requiresImageAndMetadata) {
+      if (profile?.checkSignature === true) {
+        items.push(buildSignatureBlockSummary(signatureItem));
+      }
+
+      if (profile?.checkImageAndMetadata === true) {
         items.push(
           imageSummary,
           {
@@ -3495,7 +3641,9 @@
         );
       }
 
-      items.push(hashSummary);
+      if (!profile || profile.checkHash !== false) {
+        items.push(hashSummary);
+      }
 
       return items;
     }
@@ -3629,22 +3777,43 @@
       return 'neutral';
     }
 
+    function normalizeVisibleText(value) {
+      let text = String(value || '');
+      const duplicateSentence = 'Classificação gov.br/e-gov em trilha própria, sem alterar a validação ICP-Brasil.';
+
+      text = text
+        .replace(/\bCRL\b/g, 'LCR')
+        .replace(/Nível exato não identificável no PDF\.\./g, 'Nível exato não identificável no PDF.')
+        .replace(/Sem carimbo do tempo documental identificado\.\./g, 'Sem carimbo do tempo documental identificado.')
+        .replace(/Assinatura gov\.br\/e-gov validada tecnicamente\.\./g, 'Assinatura gov.br/e-gov validada tecnicamente.')
+        .replace(/\s+\./g, '.')
+        .replace(/\.\.(?=\s|$)/g, '.');
+
+      while (text.indexOf(duplicateSentence) !== text.lastIndexOf(duplicateSentence)) {
+        const first = text.indexOf(duplicateSentence);
+        const second = text.indexOf(duplicateSentence, first + duplicateSentence.length);
+        text = text.slice(0, second) + text.slice(second + duplicateSentence.length).replace(/^\s+/, ' ');
+      }
+
+      return text.replace(/\s+/g, ' ').trim();
+    }
+
     function cleanSummaryResult(value) {
-      return stripHtml(String(value || '')).replace(/\s+/g, ' ').trim();
+      return normalizeVisibleText(stripHtml(String(value || '')));
     }
 
     function statusMessage(totals, profile) {
       const label = profile?.label || 'perfil selecionado';
+      const criterios = Array.isArray(profile?.applicable) && profile.applicable.length
+        ? profile.applicable.join(', ')
+        : 'os critérios aplicáveis';
 
       if (totals.status === 'fail') {
-        if (profile && !profile.requiresImageAndMetadata) {
-          return `Foram encontrados ${totals.fail} ponto(s) de não conformidade técnica preliminar nos critérios aplicáveis ao perfil ${label}. Revise PDF/PDF-A e assinatura digital antes do uso.`;
-        }
-        return `Foram encontrados ${totals.fail} ponto(s) de não conformidade técnica preliminar. Revise o arquivo antes do envio ao registro imobiliário e a outros órgãos que exigem os requisitos do Decreto nº 10.278/2020.`;
+        return `Foram encontrados ${totals.fail} ponto(s) de não conformidade técnica preliminar no perfil ${label}. Revise: ${criterios}.`;
       }
 
       if (totals.status === 'warn') {
-        return `Não foram detectadas falhas impeditivas pela versão beta nos critérios aplicáveis ao perfil ${label}, mas ${totals.warn} item(ns) dependem de validação técnica externa ou conferência manual.`;
+        return `Não foram detectadas falhas impeditivas pela versão beta no perfil ${label}, mas ${totals.warn} item(ns) dependem de validação técnica externa ou conferência manual.`;
       }
 
       return `Os itens verificáveis pela versão beta apresentaram resultado compatível com o perfil ${label}. Ainda assim, mantenha a conferência jurídica e técnica externa quando necessária.`;
@@ -3665,7 +3834,7 @@
       lines.push(`Resultado: ${totals.label}`);
       lines.push(`Perfil de análise: ${profile?.label || 'Não informado'}`);
       if (profile?.description) {
-        lines.push(`Escopo do perfil: ${profile.description}`);
+        lines.push(`Escopo do perfil: ${normalizeVisibleText(profile.description)}`);
       }
       lines.push(`Arquivo: ${basic.name}`);
       lines.push(`Formato detectado: ${basic.kind}`);
@@ -3677,25 +3846,25 @@
       if (blockSummaries.length) {
         lines.push('SÍNTESE POR BLOCOS');
         blockSummaries.forEach(item => {
-          lines.push(`- ${item.title}: ${labelForStatus(item.status)} - ${item.result}`);
-          lines.push(`  ${item.text}`);
+          lines.push(`- ${normalizeVisibleText(item.title)}: ${labelForStatus(item.status)} - ${normalizeVisibleText(item.result)}`);
+          lines.push(`  ${normalizeVisibleText(item.text)}`);
         });
         lines.push('');
       }
       lines.push('ITENS ANALISADOS');
       details.forEach((item, index) => {
-        const cleanResult = stripHtml(item.result);
-        lines.push(`${index + 1}. ${item.req}`);
+        const cleanResult = normalizeVisibleText(stripHtml(item.result));
+        lines.push(`${index + 1}. ${normalizeVisibleText(item.req)}`);
         lines.push(`   Resultado: ${labelForStatus(item.status)} - ${cleanResult}`);
-        lines.push(`   Orientação: ${item.guidance}`);
+        lines.push(`   Orientação: ${normalizeVisibleText(item.guidance)}`);
       });
       lines.push('');
       lines.push('LIMITAÇÕES DA VERSÃO BETA');
       lines.push('- A ferramenta faz conferência automatizada do arquivo enviado e não substitui qualificação notarial, registral ou análise jurídica do título.');
       lines.push('- A conformidade PDF/A é verificada tecnicamente pelo veraPDF, mas a adequação do documento ao caso concreto depende da finalidade de uso.');
-      lines.push('- A assinatura digital é verificada por serviço técnico próprio, com análise do padrão PAdES, cadeia ICP-Brasil, revogação por OCSP ou LCR, DSS e carimbo do tempo quando disponível.');
+      lines.push('- A assinatura digital é verificada por serviço técnico próprio, com análise do padrão PAdES, cadeia ICP-Brasil ou trilha gov.br/e-gov, revogação por OCSP ou LCR, DSS e carimbo do tempo quando disponível.');
       lines.push('- A correspondência integral com o original físico, a autoria material e a suficiência dos metadados podem depender de conferência externa ou sistema de gestão documental.');
-      lines.push('- O perfil Documentos destinados aos Registros de Imóveis considera PDF-A, assinatura digital ICP-Brasil ou assinatura gov.br/e-gov, digitalização, imagem e metadados dos Anexos I e II. O perfil Documentos emitidos pelos Tabelionatos de Notas e Registros de Imóveis considera PDF/A e assinatura digital ICP-Brasil do delegatário, substituto ou preposto.');
+      lines.push('- O perfil Documentos destinados aos Registros de Imóveis considera PDF-A, assinatura digital ICP-Brasil ou assinatura gov.br/e-gov, digitalização, imagem e metadados dos Anexos I e II. O perfil Documentos emitidos pelos Tabelionatos de Notas e Registros de Imóveis considera PDF/A e assinatura digital ICP-Brasil do delegatário, substituto ou preposto. Os perfis Checar assinatura e Checar requisitos PDF/A limitam a análise aos respectivos blocos técnicos.');
       lines.push('');
       lines.push('Observação: relatório automatizado e preliminar. Não substitui a qualificação notarial e registral nem os demais procedimentos de análise do documento eletrônico.');
       return lines.join('\n');
