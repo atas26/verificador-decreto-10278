@@ -93,7 +93,6 @@ app.post('/api/validate-pdfa', upload.single('file'), async (req, res) => {
   }
 });
 
-
 app.post('/api/validate-signature', upload.single('file'), async (req, res) => {
   const uploaded = req.file;
   if (!uploaded?.path) {
