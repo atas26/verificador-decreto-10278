@@ -17,6 +17,19 @@
     gtag('js', new Date());
     gtag('config', 'G-TTD149ZWLC');
   </script>
+  <script>
+    if ('scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
+    }
+
+    window.addEventListener('pageshow', () => {
+      window.scrollTo(0, 0);
+    });
+
+    window.addEventListener('load', () => {
+      window.scrollTo(0, 0);
+    });
+  </script>
   <style>
     :root {
       --bg: #f5f7fb;
