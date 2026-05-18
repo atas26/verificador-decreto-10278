@@ -7,6 +7,32 @@
   <meta name="description" content="Verificador técnico de documentos digitalizados em PDF, com conferência automatizada de formato, hash, PDF/A, assinatura digital ICP-Brasil e requisitos técnicos relacionados ao Decreto nº 10.278/2020." />
   <meta name="robots" content="index, follow" />
   <meta name="google-adsense-account" content="ca-pub-1578115877344777" />
+  <style id="topLoadGuard">html[data-force-top="1"] body{visibility:hidden;}</style>
+  <script>
+    (function () {
+      if (window.location.hash) return;
+      document.documentElement.setAttribute('data-force-top', '1');
+      try {
+        if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+        window.scrollTo(0, 0);
+      } catch (_error) {}
+
+      const revealAtTop = function () {
+        window.requestAnimationFrame(function () {
+          window.requestAnimationFrame(function () {
+            try { window.scrollTo(0, 0); } catch (_error) {}
+            document.documentElement.removeAttribute('data-force-top');
+            const guard = document.getElementById('topLoadGuard');
+            if (guard) guard.remove();
+          });
+        });
+      };
+
+      window.addEventListener('pageshow', revealAtTop, { once: true });
+      window.addEventListener('load', revealAtTop, { once: true });
+      window.setTimeout(revealAtTop, 800);
+    })();
+  </script>
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1578115877344777"
      crossorigin="anonymous"></script>
   <!-- Google Analytics 4 -->
@@ -16,19 +42,6 @@
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
     gtag('config', 'G-TTD149ZWLC');
-  </script>
-  <script>
-    if ('scrollRestoration' in history) {
-      history.scrollRestoration = 'manual';
-    }
-
-    window.addEventListener('pageshow', () => {
-      window.scrollTo(0, 0);
-    });
-
-    window.addEventListener('load', () => {
-      window.scrollTo(0, 0);
-    });
   </script>
   <style>
     :root {
